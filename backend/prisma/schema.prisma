@@ -1,0 +1,84 @@
+// Prisma schema for Amarktai Kiddo backend
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  credits   Int      @default(100)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  children    Child[]
+  conversations Conversation[]
+  mediaItems    MediaItem[]
+}
+
+model Child {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  age         Int
+  avatarChoice String
+  language    String   @default("en")
+  createdAt   DateTime @default(now())
+  
+  conversations Conversation[]
+  mediaItems    MediaItem[]
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  childId   String
+  child     Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  title     String
+  type      String   // 'chat' | 'music' | 'story'
+  createdAt DateTime @default(now())
+  
+  messages Message[]
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String       // 'user' | 'assistant'
+  content        String
+  emotion        String?
+  timestamp      DateTime     @default(now())
+}
+
+model MediaItem {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  childId        String
+  child          Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  conversationId String?
+  type           String   // 'audio' | 'image'
+  title          String
+  prompt         String
+  s3Key          String?  // S3 storage key
+  s3Url          String?  // Public URL
+  createdAt      DateTime @default(now())
+}
+
+model ClarificationState {
+  id             String   @id @default(cuid())
+  conversationId String   @unique
+  step           Int
+  data           Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
