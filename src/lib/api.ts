@@ -1,7 +1,9 @@
 import type { Capabilities, Child, Conversation, MediaItem, Message, SessionData, Settings } from './types';
 
 async function request<T>(path:string, options:RequestInit = {}):Promise<T> {
-  const response = await fetch(path, { credentials:'include', ...options, headers:{'Content-Type':'application/json',...(options.headers||{})} });
+  const headers = new Headers(options.headers);
+  if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+  const response = await fetch(path, { credentials:'include', ...options, headers });
   if (response.status===204) return undefined as T;
   const body=await response.json().catch(()=>({}));
   if(!response.ok) throw new Error(body?.error||`Request failed (${response.status})`);
