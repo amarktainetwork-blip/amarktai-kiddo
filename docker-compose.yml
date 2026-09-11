@@ -3,13 +3,13 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: kiddo
-      POSTGRES_USER: kiddo
+      POSTGRES_DB: ${DB_NAME:-kiddo}
+      POSTGRES_USER: ${DB_USER:-kiddo}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - kiddo_db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kiddo -d kiddo"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-kiddo} -d ${DB_NAME:-kiddo}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -19,7 +19,6 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      DATABASE_URL: postgres://kiddo:${POSTGRES_PASSWORD}@db:5432/kiddo
       MEDIA_DIR: /data/media
     depends_on:
       db:

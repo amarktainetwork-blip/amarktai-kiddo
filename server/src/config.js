@@ -6,12 +6,23 @@ function required(name, min = 1) {
   return value;
 }
 
+const databaseUrl = process.env.DATABASE_URL?.trim() || '';
+const postgresPassword = process.env.POSTGRES_PASSWORD?.trim() || '';
+if (!databaseUrl && !postgresPassword) throw new Error('Set DATABASE_URL or POSTGRES_PASSWORD for the database connection.');
+
 export const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: Number(process.env.PORT || 3001),
   publicOrigin: process.env.PUBLIC_ORIGIN?.replace(/\/$/, '') || '',
   jwtSecret: process.env.NODE_ENV === 'production' ? required('JWT_SECRET', 32) : (process.env.JWT_SECRET || 'development-only-secret-change-me'),
-  databaseUrl: required('DATABASE_URL'),
+  databaseUrl,
+  db: {
+    host: process.env.DB_HOST || 'db',
+    port: Number(process.env.DB_PORT || 5432),
+    name: process.env.DB_NAME || 'kiddo',
+    user: process.env.DB_USER || 'kiddo',
+    password: postgresPassword
+  },
   mediaDir: process.env.MEDIA_DIR || '/data/media',
   aiProvider: (process.env.AI_PROVIDER || 'auto').toLowerCase(),
   genx: {

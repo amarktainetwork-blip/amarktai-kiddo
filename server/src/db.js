@@ -2,7 +2,16 @@ import pg from 'pg';
 import { config } from './config.js';
 
 const { Pool } = pg;
-export const pool = new Pool({ connectionString: config.databaseUrl, max: 10 });
+export const pool = new Pool(config.databaseUrl
+  ? { connectionString: config.databaseUrl, max: 10 }
+  : {
+      host: config.db.host,
+      port: config.db.port,
+      database: config.db.name,
+      user: config.db.user,
+      password: config.db.password,
+      max: 10
+    });
 
 export async function initDb() {
   await pool.query(`

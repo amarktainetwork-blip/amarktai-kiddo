@@ -13,6 +13,7 @@ export const api={
   register:(input:{name:string;email:string;password:string;parentConsent:true})=>request<{user:SessionData['user']}>('/api/auth/register',{method:'POST',body:JSON.stringify(input)}),
   login:(email:string,password:string)=>request<{user:SessionData['user']}>('/api/auth/login',{method:'POST',body:JSON.stringify({email,password})}),
   logout:()=>request<void>('/api/auth/logout',{method:'POST'}),me:()=>request<SessionData>('/api/auth/me'),status:()=>request<{capabilities:Capabilities}>('/api/system/status'),
+  parentGateStatus:()=>request<{unlocked:boolean}>('/api/auth/parent-gate'),unlockParent:(password:string)=>request<{unlocked:boolean}>('/api/auth/parent-gate',{method:'POST',body:JSON.stringify({password})}),lockParent:()=>request<{unlocked:boolean}>('/api/auth/parent-gate/lock',{method:'POST'}),
   createChild:(input:{name:string;age:number;avatarChoice:string;language:string})=>request<{child:Child}>('/api/children',{method:'POST',body:JSON.stringify(input)}),
   updateChild:(id:string,input:Partial<{name:string;age:number;avatarChoice:string;language:string}>)=>request<{child:Child}>(`/api/children/${id}`,{method:'PATCH',body:JSON.stringify(input)}),deleteChild:(id:string)=>request<void>(`/api/children/${id}`,{method:'DELETE'}),
   settings:(input:Partial<{dailyMessageLimit:number;mediaEnabled:boolean;memoryEnabled:boolean}>)=>request<{settings:Settings}>('/api/settings',{method:'PATCH',body:JSON.stringify(input)}),
