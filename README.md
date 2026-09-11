@@ -17,7 +17,7 @@ Parent-controlled creative AI companion for children ages 3–12.
 
 Set `AI_PROVIDER=auto`, `genx`, or `openrouter` in `.env`.
 
-`auto` prefers `GENX_API_KEY` and falls back to `OPENROUTER_API_KEY` for text requests. GenX also enables image and music generation. OpenRouter enables chat/stories and image generation through its image-generation server tool. The UI never exposes provider or model selection to a child.
+`auto` prefers `GENX_API_KEY` and falls back to `OPENROUTER_API_KEY` for text requests. GenX also enables image and music generation. OpenRouter enables chat/stories and image generation through its dedicated image API. The UI never exposes provider or model selection to a child.
 
 Copy `.env.example` to `.env`, set `DOMAIN`, `PUBLIC_ORIGIN`, `POSTGRES_PASSWORD`, `JWT_SECRET`, and at least one AI API key.
 

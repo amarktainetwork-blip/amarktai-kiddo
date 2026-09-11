@@ -25,7 +25,7 @@ export const config = {
     key: process.env.OPENROUTER_API_KEY?.trim() || '',
     baseUrl: (process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1').replace(/\/$/, ''),
     chatModel: process.env.OPENROUTER_CHAT_MODEL || 'openai/gpt-5.3-chat',
-    imageModel: process.env.OPENROUTER_IMAGE_MODEL || 'openai/gpt-5.2'
+    imageModel: process.env.OPENROUTER_IMAGE_MODEL || 'openai/gpt-5-image'
   },
   credits: {
     starting: Number(process.env.STARTING_CREDITS || 100),

@@ -13,6 +13,24 @@ export async function submitGenxMedia(type,prompt,metadata={}){if(!config.genx.k
 export async function getGenxJob(jobId){const response=await fetch(`${config.genx.baseUrl}/api/v1/jobs/${encodeURIComponent(jobId)}`,{headers:{Authorization:`Bearer ${config.genx.key}`}});const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload?.error?.message||payload?.error||`GenX job check failed (${response.status}).`);return payload}
 export async function downloadGenxJobFile(jobId){const response=await fetch(`${config.genx.baseUrl}/api/v1/jobs/${encodeURIComponent(jobId)}/file`,{headers:{Authorization:`Bearer ${config.genx.key}`}});if(!response.ok)throw new Error(`GenX result download failed (${response.status}).`);return{buffer:Buffer.from(await response.arrayBuffer()),mimeType:response.headers.get('content-type')||'application/octet-stream'}}
 
-function findImagePayload(value,depth=0){if(depth>7||value==null)return null;if(typeof value==='string'){if(value.startsWith('data:image/')||/^https?:\/\//i.test(value))return value;return null}if(Array.isArray(value)){for(const item of value){const found=findImagePayload(item,depth+1);if(found)return found}return null}if(typeof value==='object'){for(const key of['image_url','url','image','data','images','content'])if(key in value){const found=findImagePayload(value[key],depth+1);if(found)return found}}return null}
-export async function generateOpenRouterImage(prompt){if(!config.openrouter.key)throw new Error('OPENROUTER_API_KEY is not configured.');const response=await fetch(`${config.openrouter.baseUrl}/chat/completions`,{method:'POST',headers:{Authorization:`Bearer ${config.openrouter.key}`,'Content-Type':'application/json',...(config.publicOrigin?{'HTTP-Referer':config.publicOrigin}:{}),'X-Title':'Amarktai Kiddo'},body:JSON.stringify({model:config.openrouter.imageModel,messages:[{role:'user',content:`Create one child-safe illustration: ${prompt}`}],tools:[{type:'openrouter:image_generation'}]})});const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload?.error?.message||payload?.error||`OpenRouter image request failed (${response.status}).`);const image=findImagePayload(payload?.choices?.[0]?.message||payload);if(!image)throw new Error('OpenRouter completed the request but no image payload was returned.');return{provider:'openrouter',model:config.openrouter.imageModel,image}}
+export async function generateOpenRouterImage(prompt){
+  if(!config.openrouter.key)throw new Error('OPENROUTER_API_KEY is not configured.');
+  const response=await fetch(`${config.openrouter.baseUrl}/images`,{
+    method:'POST',
+    headers:{
+      Authorization:`Bearer ${config.openrouter.key}`,
+      'Content-Type':'application/json',
+      ...(config.publicOrigin?{'HTTP-Referer':config.publicOrigin}:{}),
+      'X-Title':'Amarktai Kiddo'
+    },
+    body:JSON.stringify({model:config.openrouter.imageModel,prompt,n:1})
+  });
+  const payload=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(payload?.error?.message||payload?.error||`OpenRouter image request failed (${response.status}).`);
+  const item=payload?.data?.[0];
+  const mimeType=item?.media_type||'image/png';
+  const image=item?.b64_json?`data:${mimeType};base64,${item.b64_json}`:item?.url;
+  if(!image)throw new Error('OpenRouter completed the image request but returned no image data.');
+  return{provider:'openrouter',model:config.openrouter.imageModel,image};
+}
 export function capabilities(){const text=providerOrder().length>0;return{configured:text,activeProvider:providerOrder()[0]||null,chat:text,story:text,image:Boolean(config.genx.key||config.openrouter.key),music:Boolean(config.genx.key)}}
