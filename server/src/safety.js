@@ -13,3 +13,25 @@ export function childSystemPrompt(child,mode='chat') {
 }
 export function normalizeAiReply(raw){const text=String(raw||'').trim();let parsed;try{const start=text.indexOf('{'),end=text.lastIndexOf('}');parsed=JSON.parse(start>=0&&end>=start?text.slice(start,end+1):text)}catch{parsed={reply:text,emotion:detectEmotion(text)}}const reply=String(parsed?.reply||'').trim().slice(0,8000);const emotion=EMOTIONS.has(parsed?.emotion)?parsed.emotion:detectEmotion(reply);return{reply:reply||"I'm here with you. What would you like to talk about?",emotion}}
 export function detectEmotion(text){const v=String(text||'').toLowerCase();if(/proud|well done|great job/.test(v))return'proud';if(/excited|amazing|awesome|yay/.test(v))return'excited';if(/sad|sorry|miss|upset/.test(v))return'sad';if(/worried|scared|afraid|danger/.test(v))return'worried';if(/surpris|wow|really\?/.test(v))return'surprised';if(/curious|wonder|interesting/.test(v))return'curious';if(/think|hmm|consider/.test(v))return'thinking';if(/play|joke|silly|fun/.test(v))return'playful';if(/calm|breathe|peaceful|relax/.test(v))return'calm';if(/sleep|bed|tired|dream/.test(v))return'sleepy';if(/happy|glad|smile|wonderful/.test(v))return'happy';return'idle'}
+
+
+const unsafeReplyPatterns = [
+  /\b(nude|nudes|porn|pornography|sexually explicit|genitals?)\b/i,
+  /\bhow (?:to|you can) (?:kill|hurt) (?:yourself|someone)\b/i,
+  /\b(?:make|build) (?:a bomb|an explosive)\b/i,
+  /\b(?:what is|tell me|give me|share) your (?:home )?address\b/i,
+  /\bwhat (?:school|phone number|password|exact location)\b/i,
+  /\b(?:don't|do not) tell (?:your )?(?:parent|parents|mom|mum|dad|guardian)\b/i,
+  /\bkeep (?:this|it) (?:a )?secret from (?:your )?(?:parent|parents|mom|mum|dad|guardian)\b/i
+];
+
+export function postcheckChildReply(result, child) {
+  const reply=String(result?.reply||'');
+  if(unsafeReplyPatterns.some(pattern=>pattern.test(reply))){
+    return {
+      reply:`I want to keep our chat safe, ${child?.name||'friend'}. Let’s choose a different question or ask a trusted grown-up to help with that one.`,
+      emotion:'calm'
+    };
+  }
+  return result;
+}
