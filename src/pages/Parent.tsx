@@ -11,6 +11,7 @@ export default function Parent(){
   const[error,setError]=useState('');
   const[notice,setNotice]=useState('');
   const[newChild,setNewChild]=useState({name:'',age:8,avatarChoice:'nova',language:'English'});
+  const[currentPassword,setCurrentPassword]=useState('');const[newPassword,setNewPassword]=useState('');const[deletePassword,setDeletePassword]=useState('');const[confirmDelete,setConfirmDelete]=useState(false);
 
   const load=async()=>{const me=await api.me();setData(me)};
   useEffect(()=>{void api.parentGateStatus().then(async r=>{setUnlocked(r.unlocked);if(r.unlocked)await load()}).catch(e=>setError(e.message))},[]);
@@ -37,6 +38,26 @@ export default function Parent(){
       });
       setData({...data,settings:r.settings});setNotice('Parent controls saved.');
     }catch(e:any){setError(e.message)}
+  };
+  const exportData=async()=>{
+    setError('');
+    try{
+      const payload=await api.exportData();
+      const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');a.href=url;a.download=`amarktai-kiddo-family-data-${new Date().toISOString().slice(0,10)}.json`;a.click();
+      URL.revokeObjectURL(url);setNotice('Family data export downloaded.');
+    }catch(e:any){setError(e.message)}
+  };
+  const changePassword=async(e:FormEvent)=>{
+    e.preventDefault();setError('');
+    try{await api.changePassword(currentPassword,newPassword);setCurrentPassword('');setNewPassword('');setNotice('Parent password changed.')}
+    catch(e:any){setError(e.message)}
+  };
+  const deleteAccount=async(e:FormEvent)=>{
+    e.preventDefault();setError('');
+    try{await api.deleteAccount(deletePassword);window.location.href='/'}
+    catch(e:any){setError(e.message)}
   };
   const remove=async(id:string)=>{
     if(!confirm('Delete this child profile, its conversations and generated media?'))return;
@@ -72,6 +93,11 @@ export default function Parent(){
       <div className="manage-children">{data.children.map(c=><div className="manage-child" key={c.id}><div className="mini-avatar">{c.name.slice(0,1).toUpperCase()}</div><div><b>{c.name}</b><span>Age {c.age} · {c.language}</span></div><button className="icon-btn" onClick={()=>remove(c.id)} title="Delete profile"><Trash2/></button></div>)}</div>
       <form className="add-child" onSubmit={add}><h3><Plus/>Add another child</h3><input className="input" placeholder="Name or nickname" value={newChild.name} onChange={e=>setNewChild({...newChild,name:e.target.value})} required/><input className="input" type="number" min={3} max={12} value={newChild.age} onChange={e=>setNewChild({...newChild,age:Number(e.target.value)})}/><select className="input" value={newChild.language} onChange={e=>setNewChild({...newChild,language:e.target.value})}><option>English</option><option>Afrikaans</option><option>Zulu</option></select><button className="btn primary">Add child</button></form>
     </section>
-    <section className="panel wide danger-zone"><h2>Safety notes</h2><p>Kiddo is designed for parent-supervised use. It avoids asking children for private contact/location information, uses age-aware system instructions, blocks obvious unsafe prompts locally, and keeps generated media behind authenticated parent access. A legal/privacy review is still required before a public launch in each jurisdiction.</p></section>
+    <section className="panel wide account-tools"><div className="section-head"><h2>Parent account & family data</h2><button className="btn ghost" onClick={exportData}>Download family data</button></div>
+      <form className="password-form" onSubmit={changePassword}><h3>Change parent password</h3><input className="input" type="password" placeholder="Current password" value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)} required/><input className="input" type="password" minLength={10} placeholder="New password (10+ characters)" value={newPassword} onChange={e=>setNewPassword(e.target.value)} required/><button className="btn primary">Change password</button></form>
+    </section>
+    <section className="panel wide danger-zone"><h2>Safety & deletion</h2><p>Kiddo is designed for parent-supervised use. It avoids asking children for private contact/location information, uses age-aware system instructions, blocks obvious unsafe prompts locally, and keeps generated media behind authenticated parent access. A legal/privacy review is still required before a public launch in each jurisdiction.</p>
+      {!confirmDelete?<button className="btn danger-btn" onClick={()=>setConfirmDelete(true)}>Delete family account</button>:<form className="delete-account-form" onSubmit={deleteAccount}><p><b>This permanently deletes the parent account, all child profiles, conversations, media metadata and stored media files.</b></p><input className="input" type="password" placeholder="Enter parent password to confirm" value={deletePassword} onChange={e=>setDeletePassword(e.target.value)} required/><div><button type="button" className="btn ghost" onClick={()=>{setConfirmDelete(false);setDeletePassword('')}}>Cancel</button><button className="btn danger-btn">Permanently delete</button></div></form>}
+    </section>
   </div></AppShell>
 }
