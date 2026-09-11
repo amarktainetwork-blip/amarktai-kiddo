@@ -8,12 +8,180 @@ import { pool, withTransaction } from '../db.js';
 import { assertChildOwner, requireUser } from '../auth.js';
 import { precheckChildMessage } from '../safety.js';
 import { downloadGenxJobFile, generateOpenRouterImage, getGenxJob, submitGenxMedia } from '../providers.js';
-import { deductCredits, ensureSettings } from '../services.js';
+import { deductCredits, ensureSettings, refundCredits } from '../services.js';
 
-export const mediaRouter=Router();mediaRouter.use(requireUser);const schema=z.object({childId:z.string().uuid(),prompt:z.string().trim().min(3).max(2000),type:z.enum(['image','audio'])});
-async function saveImage(id,source){let buffer,mime='image/png';if(source.startsWith('data:image/')){const[h,d]=source.split(',',2);mime=h.match(/^data:([^;]+)/)?.[1]||mime;buffer=Buffer.from(d,'base64')}else{const r=await fetch(source);if(!r.ok)throw new Error(`Image download failed (${r.status}).`);mime=r.headers.get('content-type')||mime;buffer=Buffer.from(await r.arrayBuffer())}const ext=mime.includes('jpeg')?'.jpg':mime.includes('webp')?'.webp':'.png';const local=path.join(config.mediaDir,`${id}${ext}`);await fs.writeFile(local,buffer);await pool.query('UPDATE media_items SET local_path=$1,mime_type=$2,status=$3,updated_at=NOW() WHERE id=$4',[local,mime,'ready',id])}
-mediaRouter.post('/generate',async(req,res,next)=>{try{const i=schema.parse(req.body);const child=await assertChildOwner(req.user.id,i.childId);if(!child)return res.status(404).json({error:'Child profile not found.'});const settings=await ensureSettings(req.user.id);if(!settings.media_enabled)return res.status(403).json({error:'Media generation is disabled in Parent Controls.'});const safe=precheckChildMessage(i.prompt);if(!safe.allowed)return res.status(400).json({error:safe.reason,safeBlocked:true});if(i.type==='audio'&&!config.genx.key)return res.status(503).json({error:'Music generation requires a GenX API key. Chat and stories still work with OpenRouter.'});const id=randomUUID(),cost=i.type==='audio'?config.credits.music:config.credits.image;if(req.user.credits<cost)return res.status(402).json({error:'Not enough credits for that action.'});await pool.query(`INSERT INTO media_items (id,user_id,child_id,type,title,prompt,status) VALUES ($1,$2,$3,$4,$5,$6,'queued')`,[id,req.user.id,child.id,i.type,i.type==='audio'?'Kiddo Music':'Kiddo Picture',i.prompt]);if(i.type==='image'&&!config.genx.key&&config.openrouter.key){const g=await generateOpenRouterImage(`For a ${child.age}-year-old child. Friendly, non-scary, no text unless requested. ${i.prompt}`);await saveImage(id,g.image);const credits=await withTransaction(c=>deductCredits(c,req.user.id,cost,'Image generation'));return res.status(201).json({media:{id,status:'ready',type:'image'},credits,provider:g.provider})}const job=await submitGenxMedia(i.type,`Child-safe, warm, age-appropriate for age ${child.age}. ${i.prompt}`,{media_id:id,user_id:req.user.id,child_id:child.id});await pool.query('UPDATE media_items SET provider=$1,provider_job_id=$2,status=$3,updated_at=NOW() WHERE id=$4',[job.provider,job.jobId,'processing',id]);await withTransaction(c=>deductCredits(c,req.user.id,cost,i.type==='audio'?'Music generation':'Image generation'));res.status(202).json({media:{id,status:'processing',type:i.type},provider:job.provider})}catch(e){next(e)}});
-mediaRouter.get('/',async(req,res)=>{const{rows}=await pool.query('SELECT id,child_id,type,title,prompt,status,error_message,created_at,updated_at FROM media_items WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100',[req.user.id]);res.json({media:rows})});
-mediaRouter.get('/:id/status',async(req,res,next)=>{try{const{rows}=await pool.query('SELECT * FROM media_items WHERE id=$1 AND user_id=$2',[req.params.id,req.user.id]);const m=rows[0];if(!m)return res.status(404).json({error:'Media item not found.'});if(m.status==='ready'||m.status==='failed'||!m.provider_job_id)return res.json({media:{id:m.id,status:m.status,type:m.type,error:m.error_message}});const job=await getGenxJob(m.provider_job_id),status=String(job.status||'').toLowerCase();if(['completed','succeeded','success','ready'].includes(status)){const f=await downloadGenxJobFile(m.provider_job_id);const ext=f.mimeType.includes('mpeg')?'.mp3':f.mimeType.includes('wav')?'.wav':f.mimeType.includes('jpeg')?'.jpg':f.mimeType.includes('webp')?'.webp':m.type==='audio'?'.mp3':'.png';const local=path.join(config.mediaDir,`${m.id}${ext}`);await fs.writeFile(local,f.buffer);await pool.query('UPDATE media_items SET status=$1,local_path=$2,mime_type=$3,updated_at=NOW() WHERE id=$4',['ready',local,f.mimeType,m.id]);return res.json({media:{id:m.id,status:'ready',type:m.type}})}if(['failed','error','cancelled','canceled'].includes(status)){const msg=String(job.error||job.message||'Generation failed.').slice(0,500);await pool.query('UPDATE media_items SET status=$1,error_message=$2,updated_at=NOW() WHERE id=$3',['failed',msg,m.id]);return res.json({media:{id:m.id,status:'failed',type:m.type,error:msg}})}res.json({media:{id:m.id,status:'processing',type:m.type}})}catch(e){next(e)}});
-mediaRouter.get('/:id/file',async(req,res,next)=>{try{const{rows}=await pool.query('SELECT local_path,mime_type FROM media_items WHERE id=$1 AND user_id=$2 AND status=$3',[req.params.id,req.user.id,'ready']);const m=rows[0];if(!m?.local_path)return res.status(404).json({error:'Media file is not ready.'});res.type(m.mime_type||'application/octet-stream');res.set('Cache-Control','private, max-age=3600');res.sendFile(path.resolve(m.local_path))}catch(e){next(e)}});
-mediaRouter.delete('/:id',async(req,res,next)=>{try{const{rows}=await pool.query('DELETE FROM media_items WHERE id=$1 AND user_id=$2 RETURNING local_path',[req.params.id,req.user.id]);if(!rows[0])return res.status(404).json({error:'Media item not found.'});if(rows[0].local_path)await fs.unlink(rows[0].local_path).catch(()=>{});res.status(204).end()}catch(e){next(e)}});
+export const mediaRouter=Router();
+mediaRouter.use(requireUser);
+const schema=z.object({
+  childId:z.string().uuid(),
+  prompt:z.string().trim().min(3).max(2000),
+  type:z.enum(['image','audio'])
+});
+
+async function saveImage(id,source){
+  let buffer,mime='image/png';
+  if(source.startsWith('data:image/')){
+    const[h,d]=source.split(',',2);
+    mime=h.match(/^data:([^;]+)/)?.[1]||mime;
+    buffer=Buffer.from(d,'base64');
+  }else{
+    const r=await fetch(source);
+    if(!r.ok)throw new Error(`Image download failed (${r.status}).`);
+    mime=r.headers.get('content-type')||mime;
+    buffer=Buffer.from(await r.arrayBuffer());
+  }
+  const ext=mime.includes('jpeg')?'.jpg':mime.includes('webp')?'.webp':'.png';
+  const local=path.join(config.mediaDir,`${id}${ext}`);
+  await fs.writeFile(local,buffer);
+  await pool.query(
+    'UPDATE media_items SET local_path=$1,mime_type=$2,status=$3,updated_at=NOW() WHERE id=$4',
+    [local,mime,'ready',id]
+  );
+}
+
+async function failAndRefund(mediaId,userId,message){
+  return withTransaction(async client=>{
+    const {rows}=await client.query(
+      `UPDATE media_items
+       SET status='failed',error_message=$1,credit_refunded=TRUE,updated_at=NOW()
+       WHERE id=$2 AND user_id=$3 AND credit_refunded=FALSE
+       RETURNING credit_cost`,
+      [String(message||'Generation failed.').slice(0,500),mediaId,userId]
+    );
+    const cost=Number(rows[0]?.credit_cost||0);
+    if(cost>0)await refundCredits(client,userId,cost,'Failed media generation refund');
+    return cost;
+  });
+}
+
+mediaRouter.post('/generate',async(req,res,next)=>{
+  let id=null;
+  try{
+    const i=schema.parse(req.body);
+    const child=await assertChildOwner(req.user.id,i.childId);
+    if(!child)return res.status(404).json({error:'Child profile not found.'});
+
+    const settings=await ensureSettings(req.user.id);
+    if(!settings.media_enabled)return res.status(403).json({error:'Media generation is disabled in Parent Controls.'});
+
+    const safe=precheckChildMessage(i.prompt);
+    if(!safe.allowed)return res.status(400).json({error:safe.reason,safeBlocked:true});
+
+    if(i.type==='audio'&&!config.genx.key){
+      return res.status(503).json({error:'Music generation requires a GenX API key. Chat, stories and pictures still work with OpenRouter.'});
+    }
+
+    id=randomUUID();
+    const cost=i.type==='audio'?config.credits.music:config.credits.image;
+    const credits=await withTransaction(async client=>{
+      await client.query(
+        `INSERT INTO media_items
+         (id,user_id,child_id,type,title,prompt,status,credit_cost)
+         VALUES ($1,$2,$3,$4,$5,$6,'queued',$7)`,
+        [id,req.user.id,child.id,i.type,i.type==='audio'?'Kiddo Music':'Kiddo Picture',i.prompt,cost]
+      );
+      return deductCredits(client,req.user.id,cost,i.type==='audio'?'Music generation':'Image generation');
+    });
+
+    try{
+      if(i.type==='image'&&!config.genx.key&&config.openrouter.key){
+        const g=await generateOpenRouterImage(
+          `For a ${child.age}-year-old child. Friendly, non-scary, no text unless requested. ${i.prompt}`
+        );
+        await pool.query('UPDATE media_items SET provider=$1 WHERE id=$2',[g.provider,id]);
+        await saveImage(id,g.image);
+        return res.status(201).json({media:{id,status:'ready',type:'image'},credits,provider:g.provider});
+      }
+
+      const job=await submitGenxMedia(
+        i.type,
+        `Child-safe, warm, age-appropriate for age ${child.age}. ${i.prompt}`,
+        {media_id:id,user_id:req.user.id,child_id:child.id}
+      );
+      await pool.query(
+        'UPDATE media_items SET provider=$1,provider_job_id=$2,status=$3,updated_at=NOW() WHERE id=$4',
+        [job.provider,job.jobId,'processing',id]
+      );
+      return res.status(202).json({media:{id,status:'processing',type:i.type},credits,provider:job.provider});
+    }catch(error){
+      await failAndRefund(id,req.user.id,error.message).catch(()=>{});
+      throw error;
+    }
+  }catch(e){next(e)}
+});
+
+mediaRouter.get('/',async(req,res)=>{
+  const{rows}=await pool.query(
+    'SELECT id,child_id,type,title,prompt,status,error_message,created_at,updated_at FROM media_items WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100',
+    [req.user.id]
+  );
+  res.json({media:rows});
+});
+
+mediaRouter.get('/:id/status',async(req,res,next)=>{
+  try{
+    const{rows}=await pool.query('SELECT * FROM media_items WHERE id=$1 AND user_id=$2',[req.params.id,req.user.id]);
+    const m=rows[0];
+    if(!m)return res.status(404).json({error:'Media item not found.'});
+    if(m.status==='ready'||m.status==='failed'||!m.provider_job_id){
+      return res.json({media:{id:m.id,status:m.status,type:m.type,error:m.error_message}});
+    }
+
+    const job=await getGenxJob(m.provider_job_id);
+    const status=String(job.status||'').toLowerCase();
+
+    if(['completed','succeeded','success','ready'].includes(status)){
+      const f=await downloadGenxJobFile(m.provider_job_id);
+      const ext=f.mimeType.includes('mpeg')?'.mp3':
+        f.mimeType.includes('wav')?'.wav':
+        f.mimeType.includes('jpeg')?'.jpg':
+        f.mimeType.includes('webp')?'.webp':
+        m.type==='audio'?'.mp3':'.png';
+      const local=path.join(config.mediaDir,`${m.id}${ext}`);
+      await fs.writeFile(local,f.buffer);
+      await pool.query(
+        'UPDATE media_items SET status=$1,local_path=$2,mime_type=$3,updated_at=NOW() WHERE id=$4',
+        ['ready',local,f.mimeType,m.id]
+      );
+      return res.json({media:{id:m.id,status:'ready',type:m.type}});
+    }
+
+    if(['failed','error','cancelled','canceled'].includes(status)){
+      const msg=String(job.error||job.message||'Generation failed.').slice(0,500);
+      await failAndRefund(m.id,req.user.id,msg);
+      return res.json({media:{id:m.id,status:'failed',type:m.type,error:msg}});
+    }
+
+    res.json({media:{id:m.id,status:'processing',type:m.type}});
+  }catch(e){next(e)}
+});
+
+mediaRouter.get('/:id/file',async(req,res,next)=>{
+  try{
+    const{rows}=await pool.query(
+      'SELECT local_path,mime_type FROM media_items WHERE id=$1 AND user_id=$2 AND status=$3',
+      [req.params.id,req.user.id,'ready']
+    );
+    const m=rows[0];
+    if(!m?.local_path)return res.status(404).json({error:'Media file is not ready.'});
+    res.type(m.mime_type||'application/octet-stream');
+    res.set('Cache-Control','private, max-age=3600');
+    res.sendFile(path.resolve(m.local_path));
+  }catch(e){next(e)}
+});
+
+mediaRouter.delete('/:id',async(req,res,next)=>{
+  try{
+    const current=await pool.query(
+      'SELECT status,local_path FROM media_items WHERE id=$1 AND user_id=$2',
+      [req.params.id,req.user.id]
+    );
+    if(!current.rows[0])return res.status(404).json({error:'Media item not found.'});
+    if(['queued','processing'].includes(current.rows[0].status)){
+      return res.status(409).json({error:'This creation is still processing. Wait for it to finish before deleting it.'});
+    }
+    await pool.query('DELETE FROM media_items WHERE id=$1 AND user_id=$2',[req.params.id,req.user.id]);
+    if(current.rows[0].local_path)await fs.unlink(current.rows[0].local_path).catch(()=>{});
+    res.status(204).end();
+  }catch(e){next(e)}
+});

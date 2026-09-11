@@ -74,9 +74,13 @@ export async function initDb() {
       local_path TEXT,
       mime_type TEXT,
       error_message TEXT,
+      credit_cost INTEGER NOT NULL DEFAULT 0,
+      credit_refunded BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    ALTER TABLE media_items ADD COLUMN IF NOT EXISTS credit_cost INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE media_items ADD COLUMN IF NOT EXISTS credit_refunded BOOLEAN NOT NULL DEFAULT FALSE;
     CREATE TABLE IF NOT EXISTS credit_ledger (
       id UUID PRIMARY KEY,
       user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
