@@ -1,0 +1,30 @@
+name: Refresh frontend lockfile
+on:
+  push:
+    branches: [fix/kiddo-production-recovery]
+
+permissions:
+  contents: write
+
+jobs:
+  lockfile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/kiddo-production-recovery
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --package-lock-only --ignore-scripts
+      - run: |
+          git add package-lock.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Refresh frontend dependency lock"
+          git push origin HEAD:fix/kiddo-production-recovery
