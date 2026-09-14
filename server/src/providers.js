@@ -61,6 +61,75 @@ export async function generateText(messages){
     : 'No AI provider is configured. Add GENX_API_KEY or OPENROUTER_API_KEY.');
 }
 
+async function openAiCompatibleStream({baseUrl,apiKey,model,messages,headers={}},onDelta){
+  const response=await fetch(`${baseUrl}/chat/completions`,{
+    method:'POST',
+    signal:timeoutSignal(config.timeouts.text),
+    headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json',...headers},
+    body:JSON.stringify({model,messages,temperature:.65,max_tokens:900,stream:true})
+  });
+  if(!response.ok)throw new Error(await errorMessage(response,'AI streaming request'));
+  if(!response.body)throw new Error('AI streaming response had no body.');
+  const reader=response.body.getReader();
+  const decoder=new TextDecoder();
+  let buffer='';
+  let output='';
+  while(true){
+    const {done,value}=await reader.read();
+    if(done)break;
+    buffer+=decoder.decode(value,{stream:true});
+    const lines=buffer.split(/\r?\n/);
+    buffer=lines.pop()||'';
+    for(const line of lines){
+      if(!line.startsWith('data:'))continue;
+      const raw=line.slice(5).trim();
+      if(!raw||raw==='[DONE]')continue;
+      try{
+        const chunk=JSON.parse(raw);
+        const text=chunk?.choices?.[0]?.delta?.content;
+        if(typeof text==='string'&&text){
+          output+=text;
+          await onDelta(text);
+        }
+      }catch{}
+    }
+  }
+  return output;
+}
+
+export async function generateTextStream(messages,onDelta){
+  const errors=[];
+  for(const provider of providerOrder()){
+    try{
+      if(provider==='genx'){
+        const output=await openAiCompatibleStream({
+          baseUrl:`${config.genx.baseUrl}/v1`,
+          apiKey:config.genx.key,
+          model:config.genx.chatModel,
+          messages
+        },onDelta);
+        return{provider,model:config.genx.chatModel,output};
+      }
+      const output=await openAiCompatibleStream({
+        baseUrl:config.openrouter.baseUrl,
+        apiKey:config.openrouter.key,
+        model:config.openrouter.chatModel,
+        messages,
+        headers:{
+          ...(config.publicOrigin?{'HTTP-Referer':config.publicOrigin}:{}),
+          'X-Title':'Amarktai Kiddo'
+        }
+      },onDelta);
+      return{provider,model:config.openrouter.chatModel,output};
+    }catch(error){
+      errors.push(`${provider}: ${error.message}`);
+    }
+  }
+  throw new Error(errors.length
+    ? `No AI provider completed the streaming request. ${errors.join(' | ')}`
+    : 'No AI provider is configured.');
+}
+
 async function genxModels(category){
   if(!config.genx.key)return[];
   const response=await fetch(
