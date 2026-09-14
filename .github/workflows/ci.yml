@@ -13,7 +13,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
       - run: npm run typecheck
       - run: npm run build
       - run: npm audit --audit-level=high
@@ -42,7 +44,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
       - run: find src test -name '*.js' -print0 | xargs -0 -n1 node --check
       - run: npm test
         env:
