@@ -34,13 +34,13 @@ export async function initDb() {
       avatar_choice TEXT NOT NULL DEFAULT 'nova',
       language TEXT NOT NULL DEFAULT 'English',
       voice_gender TEXT NOT NULL DEFAULT 'female' CHECK (voice_gender IN ('female','male')),
-      voice_id TEXT NOT NULL DEFAULT 'af_heart',
+      voice_id TEXT NOT NULL DEFAULT 'en_US-hfc_female-medium',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
     ALTER TABLE children ADD COLUMN IF NOT EXISTS voice_gender TEXT NOT NULL DEFAULT 'female';
-    ALTER TABLE children ADD COLUMN IF NOT EXISTS voice_id TEXT NOT NULL DEFAULT 'af_heart';
+    ALTER TABLE children ADD COLUMN IF NOT EXISTS voice_id TEXT NOT NULL DEFAULT 'en_US-hfc_female-medium';
 
     CREATE TABLE IF NOT EXISTS parent_settings (
       user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
