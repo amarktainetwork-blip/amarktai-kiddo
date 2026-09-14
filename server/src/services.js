@@ -12,6 +12,33 @@ export async function ensureSettings(userId, client = pool) {
   return rows[0];
 }
 
+export async function reserveDailyMessage(client,userId,limit) {
+  const {rows}=await client.query(
+    `INSERT INTO daily_usage (user_id,usage_date,message_count)
+     VALUES ($1,CURRENT_DATE,1)
+     ON CONFLICT (user_id,usage_date) DO UPDATE
+       SET message_count=daily_usage.message_count+1
+       WHERE daily_usage.message_count < $2
+     RETURNING message_count`,
+    [userId,limit]
+  );
+  if(!rows[0]){
+    const error=new Error('Today’s parent-set chat limit has been reached.');
+    error.status=429;
+    throw error;
+  }
+  return rows[0].message_count;
+}
+
+export async function releaseDailyMessage(client,userId) {
+  await client.query(
+    `UPDATE daily_usage
+     SET message_count=GREATEST(message_count-1,0)
+     WHERE user_id=$1 AND usage_date=CURRENT_DATE`,
+    [userId]
+  );
+}
+
 export async function deductCredits(client,userId,amount,reason) {
   if(!Number.isFinite(amount)||amount<=0)throw new Error('Credit deduction must be a positive number.');
   const result=await client.query(
@@ -44,16 +71,6 @@ export async function refundCredits(client,userId,amount,reason) {
   return result.rows[0].credits;
 }
 
-export async function todaysMessageCount(userId) {
-  const{rows}=await pool.query(
-    `SELECT COUNT(*)::int AS count
-     FROM messages m JOIN conversations c ON c.id=m.conversation_id
-     WHERE c.user_id=$1 AND m.role='user' AND m.created_at>=date_trunc('day',NOW())`,
-    [userId]
-  );
-  return rows[0]?.count||0;
-}
-
 export function publicUser(row) {
-  return{id:row.id,email:row.email,name:row.name,credits:row.credits,createdAt:row.created_at};
+  return {id:row.id,email:row.email,name:row.name,credits:row.credits,createdAt:row.created_at};
 }

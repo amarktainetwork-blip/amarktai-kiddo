@@ -6,10 +6,11 @@ import { pool, withTransaction } from '../db.js';
 import { assertChildOwner, requireUser } from '../auth.js';
 import { childSystemPrompt, normalizeAiReply, precheckChildMessage, postcheckChildReply } from '../safety.js';
 import { generateText } from '../providers.js';
-import { deductCredits, ensureSettings, refundCredits, todaysMessageCount } from '../services.js';
+import { deductCredits, ensureSettings, refundCredits, releaseDailyMessage, reserveDailyMessage } from '../services.js';
 
 export const chatRouter=Router();
 chatRouter.use(requireUser);
+
 const schema=z.object({
   childId:z.string().uuid(),
   conversationId:z.string().uuid().optional(),
@@ -18,6 +19,11 @@ const schema=z.object({
 });
 
 chatRouter.post('/',async(req,res,next)=>{
+  let reserved=false;
+  let creditsReserved=false;
+  let cost=0;
+  let reason='Kiddo chat';
+
   try{
     const i=schema.parse(req.body);
     const child=await assertChildOwner(req.user.id,i.childId);
@@ -27,52 +33,60 @@ chatRouter.post('/',async(req,res,next)=>{
     if(!safe.allowed)return res.status(400).json({error:safe.reason,safeBlocked:true});
 
     const settings=await ensureSettings(req.user.id);
-    const cost=i.mode==='story'?config.credits.story:config.credits.chat;
-    if(await todaysMessageCount(req.user.id)>=settings.daily_message_limit){
-      return res.status(429).json({error:'Today’s parent-set chat limit has been reached.'});
-    }
+    cost=i.mode==='story'?config.credits.story:config.credits.chat;
+    reason=i.mode==='story'?'Story generation':'Kiddo chat';
 
-    let conversationId=i.conversationId;
-    if(conversationId){
+    const conversationId=i.conversationId||randomUUID();
+    let existingConversation=null;
+    let historyRows=[];
+
+    if(i.conversationId){
       const owned=await pool.query(
-        'SELECT id FROM conversations WHERE id=$1 AND user_id=$2 AND child_id=$3',
-        [conversationId,req.user.id,child.id]
+        'SELECT id,child_id,mode FROM conversations WHERE id=$1 AND user_id=$2 AND child_id=$3',
+        [i.conversationId,req.user.id,child.id]
       );
-      if(!owned.rows[0])return res.status(404).json({error:'Conversation not found.'});
-    }else{
-      conversationId=randomUUID();
-      await pool.query(
-        'INSERT INTO conversations (id,user_id,child_id,title,mode) VALUES ($1,$2,$3,$4,$5)',
-        [conversationId,req.user.id,child.id,i.message.slice(0,72),i.mode]
-      );
-    }
+      existingConversation=owned.rows[0]||null;
+      if(!existingConversation)return res.status(404).json({error:'Conversation not found.'});
 
-    await pool.query(
-      'INSERT INTO messages (id,conversation_id,role,content) VALUES ($1,$2,$3,$4)',
-      [randomUUID(),conversationId,'user',i.message]
-    );
-
-    const history=settings.memory_enabled
-      ? await pool.query(
+      if(settings.memory_enabled){
+        const history=await pool.query(
           'SELECT role,content FROM messages WHERE conversation_id=$1 ORDER BY created_at DESC LIMIT 14',
           [conversationId]
-        )
-      : {rows:[{role:'user',content:i.message}]};
+        );
+        historyRows=history.rows.reverse();
+      }
+    }
 
-    const messages=[
+    const aiMessages=[
       {role:'system',content:childSystemPrompt(child,i.mode)},
-      ...history.rows.reverse().map(r=>({role:r.role,content:r.content}))
+      ...historyRows.map(row=>({role:row.role,content:row.content})),
+      {role:'user',content:i.message}
     ];
 
-    const reason=i.mode==='story'?'Story generation':'Kiddo chat';
-    const credits=await withTransaction(client=>deductCredits(client,req.user.id,cost,reason));
+    const credits=await withTransaction(async client=>{
+      await reserveDailyMessage(client,req.user.id,settings.daily_message_limit);
+      reserved=true;
+      const balance=await deductCredits(client,req.user.id,cost,reason);
+      creditsReserved=true;
+      return balance;
+    });
 
     try{
-      const generated=await generateText(messages);
+      const generated=await generateText(aiMessages);
       const normalized=normalizeAiReply(generated.output);
       const reply=postcheckChildReply(normalized,child);
 
       await withTransaction(async client=>{
+        if(!existingConversation){
+          await client.query(
+            'INSERT INTO conversations (id,user_id,child_id,title,mode) VALUES ($1,$2,$3,$4,$5)',
+            [conversationId,req.user.id,child.id,i.message.slice(0,72),i.mode]
+          );
+        }
+        await client.query(
+          'INSERT INTO messages (id,conversation_id,role,content) VALUES ($1,$2,$3,$4)',
+          [randomUUID(),conversationId,'user',i.message]
+        );
         await client.query(
           'INSERT INTO messages (id,conversation_id,role,content,emotion) VALUES ($1,$2,$3,$4,$5)',
           [randomUUID(),conversationId,'assistant',reply.reply,reply.emotion]
@@ -91,8 +105,13 @@ chatRouter.post('/',async(req,res,next)=>{
         provider:generated.provider
       });
     }catch(error){
-      await withTransaction(client=>refundCredits(client,req.user.id,cost,`${reason} refund`)).catch(()=>{});
+      await withTransaction(async client=>{
+        if(creditsReserved)await refundCredits(client,req.user.id,cost,`${reason} refund`);
+        if(reserved)await releaseDailyMessage(client,req.user.id);
+      }).catch(()=>{});
       throw error;
     }
-  }catch(e){next(e)}
+  }catch(e){
+    next(e);
+  }
 });
