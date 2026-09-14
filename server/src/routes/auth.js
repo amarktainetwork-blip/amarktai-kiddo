@@ -151,8 +151,12 @@ authRouter.get('/me',requireUser,async(req,res)=>{
   };
   if(unlocked){
     response.settings=settings;
-    const ledger=await pool.query('SELECT amount,reason,created_at FROM credit_ledger WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20',[req.user.id]);
+    const [ledger,alerts]=await Promise.all([
+      pool.query('SELECT amount,reason,created_at FROM credit_ledger WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20',[req.user.id]),
+      pool.query('SELECT id,child_id,category,severity,message_excerpt,created_at,emailed_at FROM safety_alerts WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20',[req.user.id])
+    ]);
     response.ledger=ledger.rows;
+    response.safetyAlerts=alerts.rows;
   }
   res.json(response);
 });

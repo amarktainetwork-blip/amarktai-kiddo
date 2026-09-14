@@ -7,6 +7,7 @@ export type Settings = {
   memory_enabled:boolean;
   voice_enabled:boolean;
   voice_autoplay:boolean;
+  safety_alerts_enabled:boolean;
 };
 export type ChildSettings = {
   media_enabled:boolean;
@@ -19,6 +20,7 @@ export type SessionData = {
   settings?:Settings;
   childSettings?:ChildSettings;
   ledger?:Array<{amount:number;reason:string;created_at:string}>;
+  safetyAlerts?:Array<{id:string;child_id:string;category:string;severity:'medium'|'high'|'critical';message_excerpt:string;created_at:string;emailed_at?:string|null}>;
   parentGateUnlocked?:boolean;
 };
 export type Conversation = { id:string; child_id:string; child_name?:string; title:string; mode:'chat'|'story'; created_at:string; updated_at:string };

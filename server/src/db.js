@@ -43,12 +43,14 @@ export async function initDb() {
       media_enabled BOOLEAN NOT NULL DEFAULT TRUE,
       memory_enabled BOOLEAN NOT NULL DEFAULT TRUE,
       voice_enabled BOOLEAN NOT NULL DEFAULT TRUE,
-      voice_autoplay BOOLEAN NOT NULL DEFAULT FALSE,
+      voice_autoplay BOOLEAN NOT NULL DEFAULT TRUE,
+      safety_alerts_enabled BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     ALTER TABLE parent_settings ADD COLUMN IF NOT EXISTS voice_enabled BOOLEAN NOT NULL DEFAULT TRUE;
-    ALTER TABLE parent_settings ADD COLUMN IF NOT EXISTS voice_autoplay BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE parent_settings ADD COLUMN IF NOT EXISTS voice_autoplay BOOLEAN NOT NULL DEFAULT TRUE;
+    ALTER TABLE parent_settings ADD COLUMN IF NOT EXISTS safety_alerts_enabled BOOLEAN NOT NULL DEFAULT FALSE;
 
     CREATE TABLE IF NOT EXISTS conversations (
       id UUID PRIMARY KEY,
@@ -106,11 +108,23 @@ export async function initDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS safety_alerts (
+      id UUID PRIMARY KEY,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      child_id UUID NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+      category TEXT NOT NULL,
+      severity TEXT NOT NULL CHECK (severity IN ('medium','high','critical')),
+      message_excerpt TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      emailed_at TIMESTAMPTZ
+    );
+
     CREATE INDEX IF NOT EXISTS idx_children_user ON children(user_id);
     CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id, updated_at DESC);
     CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_media_user ON media_items(user_id, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_ledger_user ON credit_ledger(user_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_safety_alerts_user ON safety_alerts(user_id, created_at DESC);
   `);
 }
 

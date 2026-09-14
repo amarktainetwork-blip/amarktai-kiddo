@@ -40,7 +40,8 @@ export default function Parent(){
         mediaEnabled:data.settings.media_enabled,
         memoryEnabled:data.settings.memory_enabled,
         voiceEnabled:data.settings.voice_enabled,
-        voiceAutoplay:data.settings.voice_autoplay
+        voiceAutoplay:data.settings.voice_autoplay,
+        safetyAlertsEnabled:data.settings.safety_alerts_enabled
       });
       setData({...data,settings:r.settings});setNotice('Parent controls saved.');
     }catch(e:any){setError(e.message)}
@@ -96,6 +97,7 @@ export default function Parent(){
         <label className="switch-row"><span><b>Conversation memory</b><small>Use recent chat history when Kiddo answers.</small></span><input type="checkbox" checked={settings.memory_enabled} onChange={e=>setData({...data,settings:{...settings,memory_enabled:e.target.checked}})}/></label>
         <label className="switch-row"><span><b>Voice controls</b><small>Allow push-to-talk and read-aloud controls in child chat.</small></span><input type="checkbox" checked={settings.voice_enabled} onChange={e=>setData({...data,settings:{...settings,voice_enabled:e.target.checked}})}/></label>
         <label className="switch-row"><span><b>Read replies aloud automatically</b><small>Kiddo speaks each new reply when voice controls are enabled.</small></span><input type="checkbox" disabled={!settings.voice_enabled} checked={settings.voice_autoplay} onChange={e=>setData({...data,settings:{...settings,voice_autoplay:e.target.checked}})}/></label>
+        <label className="switch-row"><span><b>Email safety alerts</b><small>When enabled, Kiddo can email the parent about serious safety concerns such as danger, abuse, threats, bullying or self-harm. Requires SMTP to be configured.</small></span><input type="checkbox" checked={settings.safety_alerts_enabled} onChange={e=>setData({...data,settings:{...settings,safety_alerts_enabled:e.target.checked}})}/></label>
         <button className="btn primary" onClick={saveSettings}><Save/>Save controls</button>
       </section>
       <section className="panel"><h2>Credits</h2><div className="big-number">{data.user.credits}</div><p>Credits are server controlled. Child mode cannot add, edit or bypass them.</p>
@@ -106,6 +108,11 @@ export default function Parent(){
       <div className="manage-children">{data.children.map(c=><div className="manage-child" key={c.id}><CompanionAvatar size="sm" emotion="happy" name={c.name} variant={c.avatar_choice}/><div><b>{c.name}</b><span>Age {c.age} · {c.language} · {c.avatar_choice}</span></div><div className="child-actions"><button className="icon-btn" onClick={()=>beginEdit(c)} title="Edit profile"><Pencil/></button><button className="icon-btn" onClick={()=>remove(c.id)} title="Delete profile"><Trash2/></button></div></div>)}</div>
       {editingId&&<form className="edit-child" onSubmit={saveChild}><div className="section-head"><h3>Edit child profile</h3><button type="button" className="icon-btn" onClick={()=>setEditingId(null)}><X/></button></div><div className="edit-child-preview"><CompanionAvatar size="md" emotion="playful" name={editChild.name||'Kiddo'} variant={editChild.avatarChoice}/></div><input className="input" value={editChild.name} onChange={e=>setEditChild({...editChild,name:e.target.value})} required/><input className="input" type="number" min={3} max={12} value={editChild.age} onChange={e=>setEditChild({...editChild,age:Number(e.target.value)})}/><select className="input" value={editChild.language} onChange={e=>setEditChild({...editChild,language:e.target.value})}><option>English</option><option>Afrikaans</option><option>Zulu</option></select><div className="avatar-picker">{avatars.map(a=><button type="button" key={a} className={editChild.avatarChoice===a?'avatar-choice active':'avatar-choice'} onClick={()=>setEditChild({...editChild,avatarChoice:a})}>{a}</button>)}</div><button className="btn primary"><Save/>Save child</button></form>}
       <form className="add-child" onSubmit={add}><h3><Plus/>Add another child</h3><input className="input" placeholder="Name or nickname" value={newChild.name} onChange={e=>setNewChild({...newChild,name:e.target.value})} required/><input className="input" type="number" min={3} max={12} value={newChild.age} onChange={e=>setNewChild({...newChild,age:Number(e.target.value)})}/><select className="input" value={newChild.language} onChange={e=>setNewChild({...newChild,language:e.target.value})}><option>English</option><option>Afrikaans</option><option>Zulu</option></select><button className="btn primary">Add child</button></form>
+    </section>
+    <section className="panel wide safety-alert-panel"><div className="section-head"><h2>Safety alerts</h2><span>{data.safetyAlerts?.length||0} recent</span></div>
+      {data.safetyAlerts?.length
+        ? <div className="safety-alert-list">{data.safetyAlerts.map(a=><article key={a.id} className={"safety-alert "+a.severity}><div><b>{a.severity.toUpperCase()} · {a.category.replaceAll('-',' ')}</b><small>{new Date(a.created_at).toLocaleString()} {a.emailed_at?'· parent emailed':'· stored in Parent Controls'}</small></div><p>{a.message_excerpt}</p></article>)}</div>
+        : <div className="empty">No safety alerts recorded.</div>}
     </section>
     <section className="panel wide account-tools"><div className="section-head"><h2>Parent account & family data</h2><button className="btn ghost" onClick={exportData}>Download family data</button></div>
       <form className="password-form" onSubmit={changePassword}><h3>Change parent password</h3><input className="input" type="password" placeholder="Current password" value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)} required/><input className="input" type="password" minLength={10} placeholder="New password (10+ characters)" value={newPassword} onChange={e=>setNewPassword(e.target.value)} required/><button className="btn primary">Change password</button></form>
