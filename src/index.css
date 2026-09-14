@@ -7,3 +7,13 @@
 .bubble.assistant{position:relative;padding-right:42px}
 .speak-message{position:absolute;right:8px;top:8px;width:28px;height:28px;border:0;border-radius:9px;background:#ffffff0b;color:#9fe8df;display:grid;place-items:center}
 .speak-message:hover{background:#ffffff16;color:white}
+
+.child-card .kiddo-avatar,.manage-child .kiddo-avatar{flex:0 0 auto}
+.child-card .avatar-status,.manage-child .avatar-status{display:none}
+.manage-child{grid-template-columns:92px 1fr auto}
+.child-actions{display:flex;gap:7px}
+.edit-child{margin-top:14px;padding:18px;border:1px solid #ffffff12;border-radius:18px;background:#0a1022;display:grid;grid-template-columns:1fr 110px 160px;gap:10px;align-items:end}
+.edit-child .section-head,.edit-child .edit-child-preview,.edit-child .avatar-picker,.edit-child>.btn{grid-column:1/-1}
+.edit-child-preview{display:grid;place-items:center}
+.avatar-cheeks{filter:blur(.2px)}
+@media(max-width:720px){.edit-child{grid-template-columns:1fr}.manage-child{grid-template-columns:82px 1fr auto}}

@@ -58,7 +58,18 @@ export default function CompanionAvatar({emotion='idle',name='Kiddo',size='lg',s
       <path d={state.brow} stroke="#eef3ff" strokeWidth="6" strokeLinecap="round" fill="none" opacity=".9"/>
       {eyesClosed
         ? <><path d="M82 110 Q96 119 110 110" stroke="#fff" strokeWidth="7" fill="none" strokeLinecap="round"/><path d="M146 110 Q160 119 174 110" stroke="#fff" strokeWidth="7" fill="none" strokeLinecap="round"/></>
-        : <><ellipse className="avatar-eye" cx="96" cy="111" rx={emotion==='surprised'?10:8} ry={emotion==='surprised'?14:11} fill="#fff"/><ellipse className="avatar-eye" cx="160" cy="111" rx={emotion==='surprised'?10:8} ry={emotion==='surprised'?14:11} fill="#fff"/></>}
+        : <g className="avatar-eyes">
+            <ellipse className="avatar-eye" cx="96" cy="111" rx={emotion==='surprised'?13:11} ry={emotion==='surprised'?16:14} fill="#fff"/>
+            <ellipse className="avatar-eye" cx="160" cy="111" rx={emotion==='surprised'?13:11} ry={emotion==='surprised'?16:14} fill="#fff"/>
+            <ellipse cx="98" cy="114" rx="5.5" ry="7.5" fill="#17203d"/>
+            <ellipse cx="162" cy="114" rx="5.5" ry="7.5" fill="#17203d"/>
+            <circle cx="100" cy="110" r="2.3" fill="#fff"/>
+            <circle cx="164" cy="110" r="2.3" fill="#fff"/>
+          </g>}
+      <g className="avatar-cheeks" opacity={emotion==='sad'||emotion==='worried'?.24:.55}>
+        <ellipse cx="77" cy="137" rx="13" ry="6" fill="#ff9eb5"/>
+        <ellipse cx="179" cy="137" rx="13" ry="6" fill="#ff9eb5"/>
+      </g>
       <path className="avatar-mouth" d={state.mouth} stroke="#fff" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
       {emotion==='excited'&&<g fill={state.accent}><path d="M42 79l5 10 11 2-8 8 2 11-10-5-10 5 2-11-8-8 11-2z"/><path d="M208 100l4 8 9 1-7 7 2 9-8-4-8 4 2-9-7-7 9-1z"/></g>}
       {emotion==='worried'&&<path d="M184 126 Q194 142 184 151 Q174 142 184 126" fill="#9bdcff"/>}

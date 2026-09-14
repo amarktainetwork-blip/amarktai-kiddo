@@ -1,6 +1,7 @@
 import { FormEvent,useEffect,useState } from 'react';
-import { LockKeyhole,Plus,Save,ShieldCheck,Trash2 } from 'lucide-react';
+import { LockKeyhole,Pencil,Plus,Save,ShieldCheck,Trash2,X } from 'lucide-react';
 import AppShell from '../components/AppShell';
+import CompanionAvatar from '../components/CompanionAvatar';
 import { api } from '../lib/api';
 import type { SessionData } from '../lib/types';
 
@@ -10,7 +11,10 @@ export default function Parent(){
   const[password,setPassword]=useState('');
   const[error,setError]=useState('');
   const[notice,setNotice]=useState('');
+  const avatars=['nova','sprout','comet','bubbles','pixel','lumi'];
   const[newChild,setNewChild]=useState({name:'',age:8,avatarChoice:'nova',language:'English'});
+  const[editingId,setEditingId]=useState<string|null>(null);
+  const[editChild,setEditChild]=useState({name:'',age:8,avatarChoice:'nova',language:'English'});
   const[currentPassword,setCurrentPassword]=useState('');const[newPassword,setNewPassword]=useState('');const[deletePassword,setDeletePassword]=useState('');const[confirmDelete,setConfirmDelete]=useState(false);
 
   const load=async()=>{const me=await api.me();setData(me)};
@@ -61,6 +65,11 @@ export default function Parent(){
     try{await api.deleteAccount(deletePassword);window.location.href='/'}
     catch(e:any){setError(e.message)}
   };
+  const beginEdit=(c:SessionData['children'][number])=>{setEditingId(c.id);setEditChild({name:c.name,age:c.age,avatarChoice:c.avatar_choice,language:c.language})};
+  const saveChild=async(e:FormEvent)=>{
+    e.preventDefault();if(!editingId)return;setError('');
+    try{await api.updateChild(editingId,editChild);setEditingId(null);await load();setNotice('Child profile updated.')}catch(e:any){setError(e.message)}
+  };
   const remove=async(id:string)=>{
     if(!confirm('Delete this child profile, its conversations and generated media?'))return;
     try{await api.deleteChild(id);await load()}catch(e:any){setError(e.message)}
@@ -94,7 +103,8 @@ export default function Parent(){
       </section>
     </div>
     <section className="panel wide"><div className="section-head"><h2>Children</h2><span>{data.children.length} profile{data.children.length===1?'':'s'}</span></div>
-      <div className="manage-children">{data.children.map(c=><div className="manage-child" key={c.id}><div className="mini-avatar">{c.name.slice(0,1).toUpperCase()}</div><div><b>{c.name}</b><span>Age {c.age} · {c.language}</span></div><button className="icon-btn" onClick={()=>remove(c.id)} title="Delete profile"><Trash2/></button></div>)}</div>
+      <div className="manage-children">{data.children.map(c=><div className="manage-child" key={c.id}><CompanionAvatar size="sm" emotion="happy" name={c.name} variant={c.avatar_choice}/><div><b>{c.name}</b><span>Age {c.age} · {c.language} · {c.avatar_choice}</span></div><div className="child-actions"><button className="icon-btn" onClick={()=>beginEdit(c)} title="Edit profile"><Pencil/></button><button className="icon-btn" onClick={()=>remove(c.id)} title="Delete profile"><Trash2/></button></div></div>)}</div>
+      {editingId&&<form className="edit-child" onSubmit={saveChild}><div className="section-head"><h3>Edit child profile</h3><button type="button" className="icon-btn" onClick={()=>setEditingId(null)}><X/></button></div><div className="edit-child-preview"><CompanionAvatar size="md" emotion="playful" name={editChild.name||'Kiddo'} variant={editChild.avatarChoice}/></div><input className="input" value={editChild.name} onChange={e=>setEditChild({...editChild,name:e.target.value})} required/><input className="input" type="number" min={3} max={12} value={editChild.age} onChange={e=>setEditChild({...editChild,age:Number(e.target.value)})}/><select className="input" value={editChild.language} onChange={e=>setEditChild({...editChild,language:e.target.value})}><option>English</option><option>Afrikaans</option><option>Zulu</option></select><div className="avatar-picker">{avatars.map(a=><button type="button" key={a} className={editChild.avatarChoice===a?'avatar-choice active':'avatar-choice'} onClick={()=>setEditChild({...editChild,avatarChoice:a})}>{a}</button>)}</div><button className="btn primary"><Save/>Save child</button></form>}
       <form className="add-child" onSubmit={add}><h3><Plus/>Add another child</h3><input className="input" placeholder="Name or nickname" value={newChild.name} onChange={e=>setNewChild({...newChild,name:e.target.value})} required/><input className="input" type="number" min={3} max={12} value={newChild.age} onChange={e=>setNewChild({...newChild,age:Number(e.target.value)})}/><select className="input" value={newChild.language} onChange={e=>setNewChild({...newChild,language:e.target.value})}><option>English</option><option>Afrikaans</option><option>Zulu</option></select><button className="btn primary">Add child</button></form>
     </section>
     <section className="panel wide account-tools"><div className="section-head"><h2>Parent account & family data</h2><button className="btn ghost" onClick={exportData}>Download family data</button></div>
