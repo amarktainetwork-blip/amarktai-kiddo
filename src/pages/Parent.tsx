@@ -13,9 +13,9 @@ export default function Parent(){
   const[error,setError]=useState('');
   const[notice,setNotice]=useState('');
   const avatars=['nova','sprout','comet','bubbles','pixel','lumi'];
-  const[newChild,setNewChild]=useState({name:'',age:8,avatarChoice:'nova',language:'English',voiceGender:'female' as 'female'|'male',voiceId:'af_heart'});
+  const[newChild,setNewChild]=useState({name:'',age:8,avatarChoice:'nova',language:'English',voiceGender:'female' as 'female'|'male',voiceId:'en_US-hfc_female-medium'});
   const[editingId,setEditingId]=useState<string|null>(null);
-  const[editChild,setEditChild]=useState({name:'',age:8,avatarChoice:'nova',language:'English',voiceGender:'female' as 'female'|'male',voiceId:'af_heart'});
+  const[editChild,setEditChild]=useState({name:'',age:8,avatarChoice:'nova',language:'English',voiceGender:'female' as 'female'|'male',voiceId:'en_US-hfc_female-medium'});
   const[currentPassword,setCurrentPassword]=useState('');const[newPassword,setNewPassword]=useState('');const[deletePassword,setDeletePassword]=useState('');const[confirmDelete,setConfirmDelete]=useState(false);
 
   const load=async()=>{const me=await api.me();setData(me)};
