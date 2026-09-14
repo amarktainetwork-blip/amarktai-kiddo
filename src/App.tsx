@@ -7,7 +7,7 @@ import Chat from './pages/Chat';
 import Library from './pages/Library';
 import Parent from './pages/Parent';
 import { Contact, Privacy, Terms } from './pages/Legal';
-import { Creativity, HowItWorks, ParentsInfo, SafetyInfo } from './pages/MarketingPages';
+import { Creativity, HowItWorks, MeetBuddies, ParentsInfo, SafetyInfo } from './pages/MarketingPages';
 
 export default function App(){
   return <BrowserRouter><Routes>
@@ -16,6 +16,7 @@ export default function App(){
     <Route path="/register" element={<Register/>}/>
     <Route path="/how-it-works" element={<HowItWorks/>}/>
     <Route path="/creativity" element={<Creativity/>}/>
+    <Route path="/buddies" element={<MeetBuddies/>}/>
     <Route path="/for-parents" element={<ParentsInfo/>}/>
     <Route path="/safety" element={<SafetyInfo/>}/>
     <Route path="/privacy" element={<Privacy/>}/>
