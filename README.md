@@ -1,51 +1,180 @@
 # Amarktai Kiddo
 
-Parent-controlled creative AI companion for children ages 3–12.
+A parent-controlled creative AI companion for children ages 3–12.
 
-## Architecture
+## Production architecture
 
 - React/Vite PWA frontend
-- Express API served from the same origin
-- PostgreSQL for parent accounts, child profiles, conversations, credits and media metadata
-- HTTP-only parent session cookie
-- Server-only AI keys
-- GenX and OpenRouter provider adapter
-- Private generated media stored on the VPS volume and served only after an ownership check
-- Docker Compose + Caddy for a Webdock VPS
+- One Express API served from the same origin
+- PostgreSQL for parent accounts, child profiles, conversations, usage limits, credits and media metadata
+- HTTP-only parent session cookie plus password-protected Parent Controls
+- Private generated media on the Webdock VPS volume
+- GenX **or** OpenRouter server-side AI adapter
+- Docker Compose + Caddy HTTPS for Webdock
+- Automatic async GenX media reconciliation
+- GitHub CI with frontend build/typecheck, dependency audit, PostgreSQL integration testing and dual-provider acceptance
 
-## AI configuration
+Provider/model choices are never exposed to a child.
 
-Set `AI_PROVIDER=auto`, `genx`, or `openrouter` in `.env`.
+## AI provider parity
 
-`auto` prefers `GENX_API_KEY` and falls back to `OPENROUTER_API_KEY` for text requests. GenX also enables image and music generation. OpenRouter enables chat/stories and image generation through its dedicated image API. The UI never exposes provider or model selection to a child.
+Set one of:
 
-Copy `.env.example` to `.env`, set `DOMAIN`, `PUBLIC_ORIGIN`, `POSTGRES_PASSWORD`, `JWT_SECRET`, and at least one AI API key.
-
-## Webdock deployment
-
-```bash
-git clone https://github.com/amarktainetwork-blip/amarktai-kiddo.git
-cd amarktai-kiddo
-cp .env.example .env
-# edit .env
-docker compose up -d --build
-docker compose ps
-curl -fsS https://YOUR_DOMAIN/health
+```env
+AI_PROVIDER=genx
+GENX_API_KEY=...
 ```
 
-Point the domain A/AAAA record to the VPS before starting Caddy. Ports 80 and 443 must be open.
+or:
 
-## Required launch acceptance
+```env
+AI_PROVIDER=openrouter
+OPENROUTER_API_KEY=...
+```
 
-1. Parent registers and gives consent.
-2. Parent creates a child profile.
-3. Parent logs out/in and the child profile persists.
-4. Child chat returns a real provider response and emotion.
-5. Story mode persists conversation history.
-6. Credits deduct only after successful backend actions.
-7. Parent daily limits block additional child messages.
-8. Parent can disable generated media.
-9. Generated picture/music is only accessible while signed in to the owning parent account.
-10. `/health` reports database and AI capability state.
+or configure both and use:
 
-A jurisdiction-specific child privacy/legal review is still required before opening registration to the public.
+```env
+AI_PROVIDER=auto
+GENX_API_KEY=...
+OPENROUTER_API_KEY=...
+```
+
+The visible Kiddo feature set is the same whichever provider is selected:
+
+- chat
+- stories
+- image generation
+- music generation
+- parent-controlled voice input/read-aloud UI
+- emotional companion reactions
+- private media library
+
+Default provider models are defined in `.env.example`. GenX image/music models may be left blank so Kiddo discovers a compatible current model from the GenX catalog. OpenRouter defaults are explicitly pinned in environment configuration.
+
+Voice input/read-aloud uses browser speech capabilities so the child experience does not change with the AI provider. Parent Controls can disable voice entirely or enable automatic read-aloud.
+
+## First Webdock deployment
+
+Clone the repository **only after the approved recovery PR is merged to `main`**.
+
+```bash
+sudo mkdir -p /opt/amarktai-kiddo
+sudo chown "$USER":"$USER" /opt/amarktai-kiddo
+cd /opt/amarktai-kiddo
+git clone https://github.com/amarktainetwork-blip/amarktai-kiddo.git .
+git checkout main
+git pull --ff-only
+git rev-parse HEAD
+```
+
+Create the production environment:
+
+```bash
+cp .env.example .env
+chmod 600 .env
+nano .env
+```
+
+Required values:
+
+```env
+NODE_ENV=production
+DOMAIN=kiddo.example.com
+PUBLIC_ORIGIN=https://kiddo.example.com
+JWT_SECRET=<strong random value>
+POSTGRES_PASSWORD=<strong random value>
+DB_HOST=db
+DB_PORT=5432
+DB_NAME=kiddo
+DB_USER=kiddo
+
+AI_PROVIDER=genx
+GENX_API_KEY=<key>
+```
+
+Generate a JWT secret on the VPS:
+
+```bash
+openssl rand -hex 64
+```
+
+Then use the guarded deployment script:
+
+```bash
+./deploy/deploy.sh
+```
+
+The script refuses example placeholders, validates Compose, builds the exact lockfile-controlled dependency tree, starts the stack, checks internal AI readiness, then checks HTTPS readiness.
+
+## Health endpoints
+
+- `/health` — process/database health
+- `/ready` — database + private media storage + a live valid configured AI key
+
+A deployment is not accepted until `/ready` returns HTTP 200.
+
+Manual public smoke test:
+
+```bash
+./deploy/smoke.sh
+```
+
+## Backups
+
+Create a database and private-media backup:
+
+```bash
+./deploy/backup.sh
+```
+
+By default backups go into `./backups/`, which is Git-ignored. Copy production backups off the application VPS as part of operations.
+
+A destructive restore requires explicit confirmation:
+
+```bash
+CONFIRM_RESTORE=YES ./deploy/restore.sh backups/kiddo-db-<timestamp>.sql.gz backups/kiddo-media-<timestamp>.tar.gz
+```
+
+Test restore on staging before client handover.
+
+## Required live acceptance
+
+After entering a real GenX or OpenRouter key on the Webdock VPS:
+
+1. `/health` and `/ready` return 200 over HTTPS.
+2. Parent registers and consent is required.
+3. Parent creates at least two child profiles and can edit name, age, language and companion.
+4. Parent gate locks when entering child Chat.
+5. Wrong parent password is rejected; correct password unlocks controls.
+6. English, Afrikaans and Zulu profiles receive replies in their configured language.
+7. Saved conversations remain bound to the correct child in multi-child families.
+8. Normal chat returns a real AI response and emotion.
+9. Story mode persists the complete user/assistant exchange.
+10. Push-to-talk fills the composer on a supported browser.
+11. Read-aloud speaks a reply; parent voice-off hides/disables voice controls.
+12. Image generation produces a private image.
+13. Music generation produces playable audio.
+14. GenX async media finishes automatically without requiring the user to keep polling.
+15. Failed provider requests refund Kiddo credits and do not consume the daily parent message limit.
+16. The daily limit cannot be bypassed by concurrent requests.
+17. Generated media is available to the owning parent session and denied to logged-out/other-family sessions.
+18. Parent can disable image/music generation.
+19. Family data export works.
+20. Parent password change works.
+21. Full family account deletion removes database records and stored private media.
+22. App/database/media survive a normal container restart.
+23. Backup and restore are proven.
+
+## Release gate
+
+Do not call the product client-handover ready based only on `docker compose ps`.
+
+Required release evidence is:
+
+- exact Git commit SHA
+- green Kiddo CI on that exact SHA
+- Webdock `/ready` = 200 with the real configured provider
+- full live acceptance above
+- tested backup/restore
+- jurisdiction-specific child privacy/parental-consent review before broad public registration
