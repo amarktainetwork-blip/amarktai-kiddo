@@ -32,11 +32,11 @@ app.use(helmet({
   contentSecurityPolicy:{
     directives:{
       defaultSrc:["'self'"],
-      scriptSrc:["'self'"],
+      scriptSrc:["'self'","'wasm-unsafe-eval'"],
       styleSrc:["'self'","'unsafe-inline'"],
       imgSrc:["'self'","data:","blob:"],
       mediaSrc:["'self'","blob:"],
-      connectSrc:["'self'"],
+      connectSrc:["'self'","https://huggingface.co","https://*.huggingface.co","https://*.hf.co","https://*.xethub.hf.co"],
       fontSrc:["'self'","data:"],
       workerSrc:["'self'","blob:"],
       objectSrc:["'none'"],
