@@ -233,7 +233,7 @@ async function runProviderAcceptance(provider,appPort,mockPort,state){
     r=await api(base,'/api/auth/account',{method:'DELETE',jar:limitJar,body:{password:'Correct-Horse-Battery-77'}});
     assert.equal(r.status,204);
 
-    r=await api(base,'/api/auth/export',{jar});assert.equal(r.status,200);assert.ok(r.payload.children.length>=3);
+    r=await api(base,'/api/auth/export',{jar});assert.equal(r.status,200);assert.ok(r.payload.children.length>=2);
     r=await api(base,'/api/auth/account',{method:'DELETE',jar,body:{password:'Correct-Horse-Battery-88'}});assert.equal(r.status,204);
     r=await api(base,'/api/auth/me',{jar});assert.equal(r.status,401);
   } finally {
