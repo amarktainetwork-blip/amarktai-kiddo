@@ -38,6 +38,7 @@ export type MediaItem = { id:string; child_id:string; type:'image'|'audio'; titl
 export type Capabilities = { configured:boolean; activeProvider:string|null; chat:boolean; story:boolean; image:boolean; music:boolean; voice:boolean };
 export type SavedAction =
   | {kind:'show_image';id:string;title:string}
+  | {kind:'show_gallery';items:Array<{id:string;title:string}>}
   | {kind:'play_audio';id:string;title:string}
   | {kind:'read_story';conversationId:string;title:string;text:string}
   | null;
