@@ -67,3 +67,29 @@ export function SafetyInfo(){
     </section>
   </MarketingShell>;
 }
+
+
+export function MeetBuddies(){
+  const buddies=[
+    {id:'nova',name:'Nova',copy:'Curious, bright and ready for an adventure.'},
+    {id:'sprout',name:'Sprout',copy:'Calm, kind and great for gentle conversations.'},
+    {id:'comet',name:'Comet',copy:'Energetic, playful and always ready to explore.'},
+    {id:'bubbles',name:'Bubbles',copy:'Silly, expressive and full of creative ideas.'},
+    {id:'pixel',name:'Pixel',copy:'Clever, imaginative and perfect for curious makers.'},
+    {id:'lumi',name:'Lumi',copy:'Warm, comforting and ideal for calm story time.'}
+  ];
+  const emotions=['idle','happy','excited','curious','thinking','proud','calm','sad','worried','surprised','playful','sleepy'] as const;
+  return <MarketingShell>
+    <PageHero eyebrow="Meet the buddies" title="Same Kiddo magic. Six bright personalities." copy="Each buddy uses the same safe voice-first brain, but children can choose a colour personality that feels like their own." emotion="happy" variant="nova"/>
+    <section className="marketing-section buddy-showcase-grid">
+      {buddies.map((b,i)=><article key={b.id}>
+        <CompanionAvatar emotion={i%2?'curious':'happy'} variant={b.id} name={b.name} showLabel={false}/>
+        <h2>{b.name}</h2><p>{b.copy}</p>
+      </article>)}
+    </section>
+    <section className="marketing-section emotion-showcase-page">
+      <div className="section-intro"><span className="eyebrow">Face-screen emotions</span><h2>Kiddo’s face changes with the moment.</h2><p>The head stays friendly and simple while the screen-face, body pose and animation show how Kiddo is feeling.</p></div>
+      <div className="emotion-grid">{emotions.map((emotion,i)=><div key={emotion}><CompanionAvatar size="sm" emotion={emotion} variant={['nova','sprout','comet','bubbles','pixel','lumi'][i%6]} name={emotion} showLabel={false}/><b>{emotion}</b></div>)}</div>
+    </section>
+  </MarketingShell>;
+}
