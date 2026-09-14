@@ -62,7 +62,7 @@ export async function failGeneratedMedia(mediaId,userId,message){
 
 export function buildKidMediaPrompt(child,type,prompt){
   if(type==='audio'){
-    return `Create child-safe music for a ${child.age}-year-old. Keep it warm, imaginative and suitable for family listening. If vocals are requested, use ${child.language}. No explicit, frightening, violent or adult lyrics. Production brief: ${prompt}`;
+    return `Create a complete child-safe song or music piece lasting about 60 to 120 seconds for a ${child.age}-year-old. Keep it warm, imaginative and suitable for family listening. Develop a clear beginning, middle and ending rather than a short preview. If vocals are requested, use ${child.language}; otherwise keep it instrumental. No explicit, frightening, violent or adult lyrics. Production brief: ${prompt}`;
   }
   return `Create a polished, child-safe cartoon/animated illustration for a ${child.age}-year-old. Friendly expressive characters, rounded shapes, bright welcoming colour, non-scary, no text unless requested. Creative brief: ${prompt}`;
 }
