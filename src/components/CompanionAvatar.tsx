@@ -11,115 +11,169 @@ type Props={
   showLabel?:boolean;
 };
 
-type Palette={shell:string;shell2:string;accent:string;ear:string;chest:string};
+type Palette={
+  shell:string;
+  shellLight:string;
+  trim:string;
+  ear:string;
+  top:string;
+  face:string;
+  glow:string;
+};
+
+export const BUDDY_LABELS:Record<string,string>={
+  nova:'Sky Blue',
+  sprout:'Aqua',
+  comet:'Coral',
+  bubbles:'Lavender',
+  pixel:'Sun Yellow',
+  lumi:'Midnight'
+};
+
 const palettes:Record<string,Palette>={
-  nova:{shell:'#426cff',shell2:'#90adff',accent:'#69efff',ear:'#ff7e9c',chest:'#ffd058'},
-  sprout:{shell:'#35c98b',shell2:'#9be7b6',accent:'#82fff0',ear:'#ffd06e',chest:'#fff08d'},
-  comet:{shell:'#5d7cff',shell2:'#ff9f65',accent:'#76efff',ear:'#ff6d85',chest:'#ffe06d'},
-  bubbles:{shell:'#ee72be',shell2:'#89ddff',accent:'#8ff7ff',ear:'#ff9d77',chest:'#ffe46e'},
-  pixel:{shell:'#735dff',shell2:'#ae8aff',accent:'#6ff5e8',ear:'#ff7aab',chest:'#8df3de'},
-  lumi:{shell:'#ff9e54',shell2:'#ffe07a',accent:'#7df5ff',ear:'#ff7890',chest:'#fff39a'}
+  nova:{shell:'#2d6cff',shellLight:'#eef7ff',trim:'#7fc8ff',ear:'#2875ff',top:'#ffc83d',face:'#071947',glow:'#65efff'},
+  sprout:{shell:'#18cdd3',shellLight:'#ecffff',trim:'#7cecf0',ear:'#11b7c2',top:'#ffc83d',face:'#071947',glow:'#75fff8'},
+  comet:{shell:'#ff6f93',shellLight:'#fff0f5',trim:'#ffb0c4',ear:'#ff5d83',top:'#ffc83d',face:'#071947',glow:'#7ff6ff'},
+  bubbles:{shell:'#8a6cff',shellLight:'#f5efff',trim:'#c4b1ff',ear:'#7c59ff',top:'#ffc83d',face:'#071947',glow:'#8ef8ff'},
+  pixel:{shell:'#ffb92f',shellLight:'#fff8de',trim:'#ffd770',ear:'#2b65df',top:'#ff9f1f',face:'#071947',glow:'#7df4ff'},
+  lumi:{shell:'#173a8d',shellLight:'#e9f0ff',trim:'#4b77df',ear:'#173f9f',top:'#3ee0ef',face:'#051334',glow:'#65efff'}
 };
 
-type EyeKind='dot'|'happy'|'wide'|'side'|'wink'|'sleepy'|'sad'|'focused';
+type EyeKind='dot'|'happy'|'wide'|'side'|'wink'|'sleepy'|'sad'|'focused'|'excited';
 type MouthKind='smile'|'open'|'flat'|'sad'|'o'|'tiny';
+
 const eyeMap:Record<Emotion,EyeKind>={
-  happy:'happy',excited:'happy',curious:'side',thinking:'focused',proud:'happy',calm:'sleepy',
-  sad:'sad',worried:'wide',surprised:'wide',playful:'wink',sleepy:'sleepy',idle:'dot'
-};
-const mouthMap:Record<Emotion,MouthKind>={
-  happy:'smile',excited:'open',curious:'tiny',thinking:'flat',proud:'smile',calm:'smile',
-  sad:'sad',worried:'sad',surprised:'o',playful:'smile',sleepy:'tiny',idle:'smile'
+  happy:'happy',
+  excited:'excited',
+  curious:'wide',
+  thinking:'side',
+  proud:'happy',
+  calm:'sleepy',
+  sad:'sad',
+  worried:'wide',
+  surprised:'wide',
+  playful:'wink',
+  sleepy:'sleepy',
+  idle:'dot'
 };
 
-function RobotEye({x,kind,mirror=false}:{x:number;kind:EyeKind;mirror?:boolean}){
-  if(kind==='happy')return <path d={`M${x-12} 94 Q${x} 106 ${x+12} 94`} fill="none" stroke="var(--face-glow)" strokeWidth="7" strokeLinecap="round"/>;
-  if(kind==='sleepy')return <path d={`M${x-11} 98 Q${x} 102 ${x+11} 98`} fill="none" stroke="var(--face-glow)" strokeWidth="6" strokeLinecap="round"/>;
-  if(kind==='sad')return <path d={`M${x-12} 102 Q${x} 90 ${x+12} 102`} fill="none" stroke="var(--face-glow)" strokeWidth="6" strokeLinecap="round"/>;
-  if(kind==='wink'&&mirror)return <path d={`M${x-11} 98 Q${x} 92 ${x+11} 98`} fill="none" stroke="var(--face-glow)" strokeWidth="6" strokeLinecap="round"/>;
-  if(kind==='focused')return <g><path d={`M${x-12} 88 L${x+8} 94`} stroke="var(--face-glow)" strokeWidth="5" strokeLinecap="round"/><circle cx={x} cy="100" r="6" fill="var(--face-glow)"/></g>;
+const mouthMap:Record<Emotion,MouthKind>={
+  happy:'smile',
+  excited:'open',
+  curious:'tiny',
+  thinking:'flat',
+  proud:'smile',
+  calm:'tiny',
+  sad:'sad',
+  worried:'sad',
+  surprised:'o',
+  playful:'smile',
+  sleepy:'tiny',
+  idle:'smile'
+};
+
+function Eye({x,kind,mirror=false}:{x:number;kind:EyeKind;mirror?:boolean}){
+  if(kind==='happy')return <path d={`M${x-17} 101 Q${x} 120 ${x+17} 101`} fill="none" stroke="var(--face-glow)" strokeWidth="10" strokeLinecap="round"/>;
+  if(kind==='excited')return <path d={mirror?`M${x-15} 91 L${x} 105 L${x-15} 119 M${x+15} 91 L${x} 105 L${x+15} 119`:`M${x-15} 91 L${x} 105 L${x-15} 119 M${x+15} 91 L${x} 105 L${x+15} 119`} fill="none" stroke="var(--face-glow)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/>;
+  if(kind==='sleepy')return <path d={`M${x-15} 106 Q${x} 112 ${x+15} 106`} fill="none" stroke="var(--face-glow)" strokeWidth="8" strokeLinecap="round"/>;
+  if(kind==='sad')return <path d={`M${x-16} 112 Q${x} 94 ${x+16} 112`} fill="none" stroke="var(--face-glow)" strokeWidth="8" strokeLinecap="round"/>;
+  if(kind==='wink'&&mirror)return <path d={`M${x-15} 106 Q${x} 97 ${x+15} 106`} fill="none" stroke="var(--face-glow)" strokeWidth="8" strokeLinecap="round"/>;
+  if(kind==='side')return <g><ellipse cx={x} cy="105" rx="10" ry="12" fill="var(--face-glow)"/><circle cx={x+(mirror?-4:4)} cy="103" r="3.3" fill="#0a235c"/></g>;
   const wide=kind==='wide';
-  const side=kind==='side';
-  return <g>
-    <ellipse cx={x} cy="98" rx={wide?8:6.5} ry={wide?10:8} fill="var(--face-glow)"/>
-    {side&&<circle cx={x+(mirror?-3:3)} cy="96" r="2.3" fill="#16305f"/>}
-  </g>;
+  return <ellipse cx={x} cy="105" rx={wide?11:8.5} ry={wide?13:10} fill="var(--face-glow)"/>;
 }
 
-function RobotMouth({kind,speaking}:{kind:MouthKind;speaking:boolean}){
-  if(speaking||kind==='open')return <path className="robot-mouth" d="M106 119 Q128 139 150 119 Q145 143 128 145 Q111 143 106 119Z" fill="var(--face-glow)"/>;
-  if(kind==='sad')return <path className="robot-mouth" d="M110 137 Q128 119 146 137" fill="none" stroke="var(--face-glow)" strokeWidth="6" strokeLinecap="round"/>;
-  if(kind==='o')return <circle className="robot-mouth" cx="128" cy="130" r="8" fill="var(--face-glow)"/>;
-  if(kind==='flat')return <path className="robot-mouth" d="M116 130h24" stroke="var(--face-glow)" strokeWidth="6" strokeLinecap="round"/>;
-  if(kind==='tiny')return <path className="robot-mouth" d="M121 130h14" stroke="var(--face-glow)" strokeWidth="5" strokeLinecap="round"/>;
-  return <path className="robot-mouth" d="M108 123 Q128 143 148 123" fill="none" stroke="var(--face-glow)" strokeWidth="6" strokeLinecap="round"/>;
+function Mouth({kind,speaking}:{kind:MouthKind;speaking:boolean}){
+  if(speaking||kind==='open')return <path className="robot-mouth" d="M126 137 Q150 163 174 137 Q170 168 150 170 Q130 168 126 137Z" fill="var(--face-glow)"/>;
+  if(kind==='sad')return <path className="robot-mouth" d="M128 157 Q150 136 172 157" fill="none" stroke="var(--face-glow)" strokeWidth="8" strokeLinecap="round"/>;
+  if(kind==='o')return <ellipse className="robot-mouth" cx="150" cy="151" rx="10" ry="12" fill="var(--face-glow)"/>;
+  if(kind==='flat')return <path className="robot-mouth" d="M136 151h28" stroke="var(--face-glow)" strokeWidth="7" strokeLinecap="round"/>;
+  if(kind==='tiny')return <path className="robot-mouth" d="M141 151h18" stroke="var(--face-glow)" strokeWidth="6" strokeLinecap="round"/>;
+  return <path className="robot-mouth" d="M128 143 Q150 166 172 143" fill="none" stroke="var(--face-glow)" strokeWidth="8" strokeLinecap="round"/>;
 }
 
 export default function CompanionAvatar({
-  emotion='idle',name='Kiddo',size='lg',speaking=false,listening=false,variant='nova',showLabel=true
+  emotion='idle',
+  name='Kiddo',
+  size='lg',
+  speaking=false,
+  listening=false,
+  variant='nova',
+  showLabel=true
 }:Props){
   const p=palettes[variant]||palettes.nova;
-  const px=size==='sm'?92:size==='md'?190:340;
+  const px=size==='sm'?104:size==='md'?210:390;
+  const effectiveEmotion:Emotion=listening?'curious':emotion;
   const state=listening?'listening':speaking?'speaking':emotion==='idle'?'ready':emotion;
   const style={
     '--robot-shell':p.shell,
-    '--robot-shell-2':p.shell2,
+    '--robot-shell-light':p.shellLight,
+    '--robot-trim':p.trim,
     '--robot-ear':p.ear,
-    '--robot-chest':p.chest,
-    '--face-glow':p.accent,
+    '--robot-top':p.top,
+    '--robot-face':p.face,
+    '--face-glow':p.glow,
     width:px
   } as CSSProperties;
 
-  return <div className={`kiddo-robot emotion-${emotion} ${speaking?'is-speaking ':''}${listening?'is-listening ':''}`} style={style} aria-label={name+' is '+state}>
-    <div className="robot-halo"><i/><i/></div>
-    <svg viewBox="0 0 256 300" role="img" aria-hidden="true">
+  return <div className={`kiddo-head emotion-${effectiveEmotion} ${speaking?'is-speaking ':''}${listening?'is-listening ':''}`} style={style} aria-label={name+' is '+state}>
+    <div className="kiddo-head-glow"><i/><i/></div>
+    <svg viewBox="0 0 300 230" role="img" aria-hidden="true">
       <defs>
-        <linearGradient id={'shell-'+variant} x1="0" y1="0" x2="1" y2="1">
-          <stop stopColor={p.shell2}/><stop offset=".58" stopColor={p.shell}/><stop offset="1" stopColor={p.shell}/>
+        <linearGradient id={'headShell-'+variant} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#ffffff"/>
+          <stop offset=".42" stopColor={p.shellLight}/>
+          <stop offset="1" stopColor={p.trim}/>
         </linearGradient>
-        <linearGradient id={'body-'+variant} x1="0" y1="0" x2="1" y2="1">
-          <stop stopColor="#eef4ff"/><stop offset="1" stopColor={p.shell2}/>
+        <linearGradient id={'ear-'+variant} x1="0" y1="0" x2="1" y2="1">
+          <stop stopColor={p.shell}/>
+          <stop offset="1" stopColor={p.ear}/>
         </linearGradient>
-        <radialGradient id="screenGlow" cx=".5" cy=".35" r=".8">
-          <stop stopColor="#213d7d"/><stop offset="1" stopColor="#111b43"/>
+        <radialGradient id={'screen-'+variant} cx=".46" cy=".34" r=".82">
+          <stop stopColor="#183676"/>
+          <stop offset=".58" stopColor={p.face}/>
+          <stop offset="1" stopColor="#030a25"/>
         </radialGradient>
+        <filter id="softShadow" x="-30%" y="-30%" width="160%" height="180%">
+          <feDropShadow dx="0" dy="12" stdDeviation="12" floodColor="#174cc1" floodOpacity=".18"/>
+        </filter>
       </defs>
 
-      <ellipse cx="128" cy="285" rx="52" ry="9" fill="#24356322"/>
+      <ellipse cx="150" cy="213" rx="76" ry="10" fill="#2c68e918"/>
 
-      <g className="robot-legs">
-        <path d="M92 233c-8 17-7 32 1 43 7 9 25 8 31-2 5-8 1-23-5-39z" fill={'url(#shell-'+variant+')'}/>
-        <path d="M164 233c8 17 7 32-1 43-7 9-25 8-31-2-5-8-1-23 5-39z" fill={'url(#shell-'+variant+')'}/>
+      <g className="ear left-ear">
+        <rect x="22" y="78" width="42" height="82" rx="20" fill={'url(#ear-'+variant+')'} stroke="#ffffff" strokeWidth="5"/>
+        <rect x="32" y="92" width="20" height="54" rx="10" fill="var(--robot-top)"/>
+      </g>
+      <g className="ear right-ear">
+        <rect x="236" y="78" width="42" height="82" rx="20" fill={'url(#ear-'+variant+')'} stroke="#ffffff" strokeWidth="5"/>
+        <rect x="248" y="92" width="20" height="54" rx="10" fill="var(--robot-top)"/>
       </g>
 
-      <g className="robot-arms">
-        <path className="robot-arm-left" d="M79 188c-23 6-34 21-29 33 5 12 23 10 38-4l11-13" fill="none" stroke={p.shell} strokeWidth="18" strokeLinecap="round"/>
-        <path className="robot-arm-right" d="M177 188c23 6 34 21 29 33-5 12-23 10-38-4l-11-13" fill="none" stroke={p.shell} strokeWidth="18" strokeLinecap="round"/>
-      </g>
+      <path className="head-shell" d="M64 42 Q78 18 112 20 H188 Q222 18 236 42 Q248 65 247 113 V147 Q247 184 218 198 Q194 210 150 210 Q106 210 82 198 Q53 184 53 147 V113 Q52 65 64 42Z" fill={'url(#headShell-'+variant+')'} stroke="#ffffff" strokeWidth="6" filter="url(#softShadow)"/>
 
-      <path className="robot-body" d="M83 171c10-18 80-18 90 0 11 20 17 55 2 72-14 16-80 16-94 0-15-17-9-52 2-72z" fill={'url(#body-'+variant+')'} stroke="#ffffff" strokeWidth="4"/>
-      <path d="M105 205h46l-7 28h-32z" fill="#ffffff88"/>
-      <path d="M128 197l6 11 13 2-9 9 2 13-12-6-12 6 2-13-9-9 13-2z" fill="var(--robot-chest)"/>
+      <path className="top-cap" d="M113 27 Q122 2 149 2 Q178 2 188 27 Q169 20 150 20 Q130 20 113 27Z" fill="var(--robot-top)" stroke="#ffffff" strokeWidth="4"/>
+      <path d="M151 2 Q171 3 187 23 Q169 18 151 18Z" fill="var(--robot-shell)"/>
 
-      <rect x="53" y="44" width="150" height="120" rx="32" fill={'url(#shell-'+variant+')'} stroke="#ffffff" strokeWidth="5"/>
-      <rect x="66" y="57" width="124" height="94" rx="24" fill="url(#screenGlow)" stroke="#253d83" strokeWidth="3"/>
+      <rect x="69" y="58" width="162" height="122" rx="35" fill={'url(#screen-'+variant+')'} stroke="#2f64d6" strokeWidth="5"/>
+      <rect x="78" y="66" width="144" height="104" rx="30" fill="none" stroke="#ffffff18" strokeWidth="2"/>
+      <path d="M88 72 Q130 52 208 71" fill="none" stroke="#ffffff30" strokeWidth="7" strokeLinecap="round"/>
 
-      <rect x="39" y="77" width="20" height="58" rx="10" fill="var(--robot-ear)" stroke="#ffffff" strokeWidth="3"/>
-      <rect x="197" y="77" width="20" height="58" rx="10" fill="var(--robot-ear)" stroke="#ffffff" strokeWidth="3"/>
-      <rect x="108" y="31" width="40" height="14" rx="7" fill="var(--robot-chest)" stroke="#ffffff" strokeWidth="3"/>
+      <Eye x={116} kind={eyeMap[effectiveEmotion]}/>
+      <Eye x={184} kind={eyeMap[effectiveEmotion]} mirror/>
+      <Mouth kind={mouthMap[effectiveEmotion]} speaking={speaking}/>
 
-      <path d="M76 67c18-15 87-22 108 4-27-9-75-10-108-4z" fill="#ffffff44"/>
+      <rect x="127" y="196" width="46" height="17" rx="8.5" fill="var(--robot-shell)" stroke="#ffffff" strokeWidth="4"/>
+      <rect x="140" y="201" width="20" height="5" rx="3" fill="var(--face-glow)"/>
 
-      <RobotEye x={98} kind={eyeMap[emotion]}/><RobotEye x={158} kind={eyeMap[emotion]} mirror/>
-      <RobotMouth kind={mouthMap[emotion]} speaking={speaking}/>
-
-      {emotion==='excited'&&<g fill="var(--robot-chest)"><circle cx="34" cy="52" r="4"/><circle cx="223" cy="58" r="5"/><path d="M225 30l4 9 10 1-8 7 3 10-9-5-9 5 3-10-8-7 10-1z"/></g>}
-      {emotion==='thinking'&&<g fill="var(--face-glow)"><circle cx="212" cy="47" r="4"/><circle cx="226" cy="35" r="7"/><circle cx="243" cy="19" r="10"/></g>}
-      {emotion==='worried'&&<path d="M200 68q7 9 0 19q-7-9 0-19z" fill="#aef1ff"/>}
-      {emotion==='sleepy'&&<g fill="var(--face-glow)"><text x="198" y="74" fontSize="16" fontWeight="800">z</text><text x="217" y="55" fontSize="23" fontWeight="800">z</text></g>}
-      {emotion==='proud'&&<g fill="var(--robot-chest)"><circle cx="32" cy="112" r="5"/><circle cx="224" cy="112" r="5"/></g>}
+      {effectiveEmotion==='thinking'&&<g fill="var(--robot-top)"><circle cx="243" cy="42" r="5"/><circle cx="260" cy="29" r="8"/><circle cx="281" cy="12" r="11"/></g>}
+      {effectiveEmotion==='worried'&&<path d="M228 77q8 10 0 22q-8-10 0-22z" fill="#8ff7ff"/>}
+      {effectiveEmotion==='sleepy'&&<g fill="var(--robot-shell)" fontWeight="900"><text x="236" y="70" fontSize="18">z</text><text x="256" y="50" fontSize="25">z</text></g>}
+      {effectiveEmotion==='excited'&&<g fill="var(--robot-top)"><path d="M27 47l5 12 13 2-10 9 3 13-11-7-12 7 4-13-11-9 13-2z"/><circle cx="272" cy="68" r="6"/></g>}
+      {effectiveEmotion==='surprised'&&<g fill="var(--robot-top)"><path d="M21 65h22" stroke="var(--robot-top)" strokeWidth="6" strokeLinecap="round"/><path d="M257 65h22" stroke="var(--robot-top)" strokeWidth="6" strokeLinecap="round"/></g>}
+      {effectiveEmotion==='playful'&&<path d="M164 164q12 6 18-3" fill="none" stroke="#ff6e92" strokeWidth="5" strokeLinecap="round"/>}
     </svg>
-    <div className="robot-audio-bars"><i/><i/><i/><i/><i/></div>
-    {showLabel&&<div className="robot-label"><span/>{name} · {state}</div>}
+    <div className="head-audio-bars"><i/><i/><i/><i/><i/></div>
+    {showLabel&&<div className="robot-label"><span/>{BUDDY_LABELS[variant]||'Kiddo'} · {state}</div>}
   </div>;
 }
