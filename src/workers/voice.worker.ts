@@ -1,77 +1,82 @@
 /// <reference lib="webworker" />
-import { pipeline } from '@huggingface/transformers';
-import { KokoroTTS } from 'kokoro-js';
+import * as piper from '@jtsage/piper-tts-web';
+import { ModelManager, WhisperWasmService } from '@timur00kh/whisper.wasm';
 
 type Req =
-  | {id:string;type:'init'}
-  | {id:string;type:'tts';text:string;voice:string;speed:number}
+  | {id:string;type:'init';voice?:string}
+  | {id:string;type:'tts';text:string;voice:string}
   | {id:string;type:'stt';samples:ArrayBuffer;language?:string};
 
-let tts:any=null;
-let asr:any=null;
-let ttsPromise:Promise<any>|null=null;
-let asrPromise:Promise<any>|null=null;
+let whisper:any=null;
+let whisperPromise:Promise<any>|null=null;
+const downloadedVoices=new Set<string>();
 
-const hasWebGpu=()=>Boolean((self.navigator as any)?.gpu);
 const progress=(engine:string,value:any)=>self.postMessage({type:'progress',engine,value});
 
-async function loadTts(){
-  if(tts)return tts;
-  if(ttsPromise)return ttsPromise;
-  ttsPromise=(async()=>{
-    const webgpu=hasWebGpu();
-    tts=await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{
-      device:webgpu?'webgpu':'wasm',
-      dtype:webgpu?'fp32':'q8',
-      progress_callback:(value:any)=>progress('tts',value)
-    });
-    self.postMessage({type:'ready',engine:'tts',device:webgpu?'webgpu':'wasm'});
-    return tts;
-  })();
-  return ttsPromise;
+function whisperLanguage(language?:string){
+  const value=String(language||'').toLowerCase();
+  if(value.startsWith('af'))return'af';
+  if(value.startsWith('zu'))return'zu';
+  return'en';
 }
 
-async function loadAsr(){
-  if(asr)return asr;
-  if(asrPromise)return asrPromise;
-  asrPromise=(async()=>{
-    const webgpu=hasWebGpu();
-    asr=await pipeline('automatic-speech-recognition','onnx-community/whisper-tiny',{
-      device:webgpu?'webgpu':'wasm',
-      dtype:'q8',
-      progress_callback:(value:any)=>progress('stt',value)
-    } as any);
-    self.postMessage({type:'ready',engine:'stt',device:webgpu?'webgpu':'wasm'});
-    return asr;
+async function ensureWhisper(){
+  if(whisper)return whisper;
+  if(whisperPromise)return whisperPromise;
+  whisperPromise=(async()=>{
+    const service=new WhisperWasmService({logLevel:0});
+    if(!(await service.checkWasmSupport()))throw new Error('This browser does not support local Whisper speech recognition.');
+    const manager=new ModelManager({logLevel:0});
+    const model=await manager.loadModel('tiny',true,(value:number)=>progress('stt-model',value));
+    await service.initModel(model);
+    whisper=service;
+    self.postMessage({type:'ready',engine:'stt',device:'wasm'});
+    return service;
   })();
-  return asrPromise;
+  return whisperPromise;
+}
+
+async function ensureVoice(voice:string){
+  if(downloadedVoices.has(voice))return;
+  await piper.download(voice,(value:any)=>progress('tts-model',value));
+  downloadedVoices.add(voice);
+  self.postMessage({type:'ready',engine:'tts',device:'wasm',voice});
 }
 
 self.onmessage=async(event:MessageEvent<Req>)=>{
   const msg=event.data;
   try{
     if(msg.type==='init'){
-      await Promise.allSettled([loadTts(),loadAsr()]);
+      await Promise.allSettled([
+        ensureWhisper(),
+        ensureVoice(msg.voice||'en_US-hfc_female-medium')
+      ]);
       self.postMessage({id:msg.id,type:'init-complete'});
       return;
     }
+
     if(msg.type==='tts'){
-      const engine=await loadTts();
-      const audio=await engine.generate(msg.text,{voice:msg.voice,speed:msg.speed});
-      const samples=audio.data as Float32Array;
-      self.postMessage(
-        {id:msg.id,type:'tts-result',samples:samples.buffer,sampleRate:audio.sample_rate||24000},
-        [samples.buffer]
-      );
+      await ensureVoice(msg.voice);
+      const wav=await piper.predict({text:msg.text,voiceId:msg.voice},(value:any)=>progress('tts',value));
+      self.postMessage({id:msg.id,type:'tts-result',blob:wav});
       return;
     }
+
     if(msg.type==='stt'){
-      const engine=await loadAsr();
-      const samples=new Float32Array(msg.samples);
-      const options:any={chunk_length_s:20,stride_length_s:3,return_timestamps:false};
-      if(msg.language==='English')options.language='english';
-      const result:any=await engine(samples,options);
-      self.postMessage({id:msg.id,type:'stt-result',text:String(result?.text||'').trim()});
+      const service=await ensureWhisper();
+      const result=await service.transcribe(
+        new Float32Array(msg.samples),
+        undefined,
+        {
+          language:whisperLanguage(msg.language),
+          translate:false,
+          threads:Math.max(1,Math.min(4,(self.navigator as any).hardwareConcurrency||2))
+        }
+      );
+      const text=Array.isArray(result?.segments)
+        ? result.segments.map((segment:any)=>String(segment?.text||'')).join(' ').trim()
+        : '';
+      self.postMessage({id:msg.id,type:'stt-result',text});
     }
   }catch(error:any){
     self.postMessage({id:msg.id,type:'error',error:String(error?.message||error)});
