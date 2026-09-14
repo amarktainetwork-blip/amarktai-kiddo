@@ -94,7 +94,7 @@ authRouter.post('/change-password',requireUser,requireParentGate,async(req,res,n
 authRouter.get('/export',requireUser,requireParentGate,async(req,res,next)=>{
   try{
     const [children,settings,conversations,messages,media,ledger]=await Promise.all([
-      pool.query('SELECT id,name,age,avatar_choice,language,created_at,updated_at FROM children WHERE user_id=$1 ORDER BY created_at',[req.user.id]),
+      pool.query('SELECT id,name,age,avatar_choice,language,voice_gender,voice_id,created_at,updated_at FROM children WHERE user_id=$1 ORDER BY created_at',[req.user.id]),
       ensureSettings(req.user.id),
       pool.query('SELECT id,child_id,title,mode,created_at,updated_at FROM conversations WHERE user_id=$1 ORDER BY created_at',[req.user.id]),
       pool.query(`SELECT m.id,m.conversation_id,m.role,m.content,m.emotion,m.created_at
@@ -136,7 +136,7 @@ authRouter.delete('/account',requireUser,requireParentGate,async(req,res,next)=>
 authRouter.get('/me',requireUser,async(req,res)=>{
   const unlocked=isParentGateUnlocked(req,req.user.id);
   const [children,settings]=await Promise.all([
-    pool.query('SELECT id,name,age,avatar_choice,language,created_at FROM children WHERE user_id=$1 ORDER BY created_at',[req.user.id]),
+    pool.query('SELECT id,name,age,avatar_choice,language,voice_gender,voice_id,created_at FROM children WHERE user_id=$1 ORDER BY created_at',[req.user.id]),
     ensureSettings(req.user.id)
   ]);
   const response={
