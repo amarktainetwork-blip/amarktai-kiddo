@@ -2,6 +2,7 @@ import { FormEvent,useState } from 'react';
 import { Link,useNavigate } from 'react-router-dom';
 import { ShieldCheck,Sparkles } from 'lucide-react';
 import { api } from '../lib/api';
+import { LOCAL_VOICES, voiceForGender } from '../lib/localVoice';
 import CompanionAvatar from '../components/CompanionAvatar';
 import MarketingShell from '../components/MarketingShell';
 
@@ -13,7 +14,7 @@ export default function Register(){
   const[busy,setBusy]=useState(false);
   const[error,setError]=useState('');
   const[parent,setParent]=useState({name:'',email:'',password:'',consent:false});
-  const[child,setChild]=useState({name:'',age:8,avatarChoice:'nova',language:'English'});
+  const[child,setChild]=useState({name:'',age:8,avatarChoice:'nova',language:'English',voiceGender:'female' as 'female'|'male',voiceId:'af_heart'});
 
   const createParent=async(e:FormEvent)=>{
     e.preventDefault();
@@ -55,6 +56,9 @@ export default function Register(){
       <label>Age<input className="input" type="number" min={3} max={12} value={child.age} onChange={e=>setChild({...child,age:Number(e.target.value)})} required/></label>
       <label>Buddy style<div className="avatar-picker avatar-cards">{avatars.map(a=><button type="button" key={a} className={child.avatarChoice===a?'avatar-choice avatar-card active':'avatar-choice avatar-card'} onClick={()=>setChild({...child,avatarChoice:a})}><CompanionAvatar size="sm" emotion={child.avatarChoice===a?'happy':'idle'} variant={a}/><span>{a}</span></button>)}</div></label>
       <label>Language<select className="input" value={child.language} onChange={e=>setChild({...child,language:e.target.value})}><option>English</option><option>Afrikaans</option><option>Zulu</option></select></label>
+      <label>Voice type<select className="input" value={child.voiceGender} onChange={e=>{const voiceGender=e.target.value as 'female'|'male';setChild({...child,voiceGender,voiceId:voiceForGender(voiceGender)})}}><option value="female">Female</option><option value="male">Male</option></select></label>
+      <label>Voice<select className="input" value={child.voiceId} onChange={e=>setChild({...child,voiceId:e.target.value})}>{LOCAL_VOICES.filter(v=>v.gender===child.voiceGender).map(v=><option key={v.id} value={v.id}>{v.label} · {v.accent}</option>)}</select></label>
+      <small className="muted">English can use the on-device neural voice at no speech-credit cost. Afrikaans and Zulu use the configured provider voice until a commercially compatible local voice is installed.</small>
       <button className="btn primary big" disabled={busy}>{busy?'Saving…':'Meet Kiddo'}</button>
     </form>}
   </div></MarketingShell>;
