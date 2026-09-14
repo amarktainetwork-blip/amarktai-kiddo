@@ -66,7 +66,7 @@ export default function CompanionAvatar({emotion='idle',name='Kiddo',size='lg',s
             <circle cx="100" cy="110" r="2.3" fill="#fff"/>
             <circle cx="164" cy="110" r="2.3" fill="#fff"/>
           </g>}
-      <g className="avatar-cheeks" opacity={emotion==='sad'||emotion==='worried'?.24:.55}>
+      <g className="avatar-cheeks" opacity={emotion==='sad'||emotion==='worried'?0.24:0.55}>
         <ellipse cx="77" cy="137" rx="13" ry="6" fill="#ff9eb5"/>
         <ellipse cx="179" cy="137" rx="13" ry="6" fill="#ff9eb5"/>
       </g>
