@@ -83,7 +83,7 @@ export function MeetBuddies(){
     <PageHero eyebrow="Meet the buddies" title="Same Kiddo magic. Six bright personalities." copy="Each buddy uses the same safe voice-first brain, but children can choose a colour personality that feels like their own." emotion="happy" variant="nova"/>
     <section className="marketing-section buddy-showcase-grid">
       {buddies.map((b,i)=><article key={b.id}>
-        <CompanionAvatar emotion={i%2?'curious':'happy'} variant={b.id} name={b.name} showLabel={false}/>
+        <CompanionAvatar emotion={i%2?'curious':'happy'} variant={b.id} name={BUDDY_LABELS[b.id]||'Kiddo'} showLabel={false}/>
         <h2>{BUDDY_LABELS[b.id]}</h2><p>{b.copy}</p>
       </article>)}
     </section>
