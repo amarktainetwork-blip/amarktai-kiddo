@@ -1,6 +1,6 @@
 import { BookOpen, Heart, Image, Mic2, Music2, ShieldCheck, Sparkles, Volume2 } from 'lucide-react';
 import MarketingShell from '../components/MarketingShell';
-import CompanionAvatar from '../components/CompanionAvatar';
+import CompanionAvatar, { BUDDY_LABELS } from '../components/CompanionAvatar';
 
 function PageHero({eyebrow,title,copy,emotion='happy',variant='nova'}:{eyebrow:string;title:string;copy:string;emotion?:any;variant?:string}){
   return <section className="marketing-subhero">
@@ -71,12 +71,12 @@ export function SafetyInfo(){
 
 export function MeetBuddies(){
   const buddies=[
-    {id:'nova',name:'Nova',copy:'Curious, bright and ready for an adventure.'},
-    {id:'sprout',name:'Sprout',copy:'Calm, kind and great for gentle conversations.'},
-    {id:'comet',name:'Comet',copy:'Energetic, playful and always ready to explore.'},
-    {id:'bubbles',name:'Bubbles',copy:'Silly, expressive and full of creative ideas.'},
-    {id:'pixel',name:'Pixel',copy:'Clever, imaginative and perfect for curious makers.'},
-    {id:'lumi',name:'Lumi',copy:'Warm, comforting and ideal for calm story time.'}
+    {id:'nova',copy:'Bright, friendly and ready for every big question.'},
+    {id:'sprout',copy:'Fresh aqua energy for calm chats and curious ideas.'},
+    {id:'comet',copy:'Warm coral energy for playful, expressive moments.'},
+    {id:'bubbles',copy:'Soft lavender with a creative, imaginative feel.'},
+    {id:'pixel',copy:'Sunny yellow for bold ideas and cheerful adventures.'},
+    {id:'lumi',copy:'Deep midnight blue with a bright digital glow.'}
   ];
   const emotions=['idle','happy','excited','curious','thinking','proud','calm','sad','worried','surprised','playful','sleepy'] as const;
   return <MarketingShell>
@@ -84,11 +84,11 @@ export function MeetBuddies(){
     <section className="marketing-section buddy-showcase-grid">
       {buddies.map((b,i)=><article key={b.id}>
         <CompanionAvatar emotion={i%2?'curious':'happy'} variant={b.id} name={b.name} showLabel={false}/>
-        <h2>{b.name}</h2><p>{b.copy}</p>
+        <h2>{BUDDY_LABELS[b.id]}</h2><p>{b.copy}</p>
       </article>)}
     </section>
     <section className="marketing-section emotion-showcase-page">
-      <div className="section-intro"><span className="eyebrow">Face-screen emotions</span><h2>Kiddo’s face changes with the moment.</h2><p>The head stays friendly and simple while the screen-face, body pose and animation show how Kiddo is feeling.</p></div>
+      <div className="section-intro"><span className="eyebrow">Face-screen emotions</span><h2>Kiddo’s face changes with the moment.</h2><p>The mascot stays simple and friendly while the screen-face, glow and motion show how Kiddo is feeling.</p></div>
       <div className="emotion-grid">{emotions.map((emotion,i)=><div key={emotion}><CompanionAvatar size="sm" emotion={emotion} variant={['nova','sprout','comet','bubbles','pixel','lumi'][i%6]} name={emotion} showLabel={false}/><b>{emotion}</b></div>)}</div>
     </section>
   </MarketingShell>;
