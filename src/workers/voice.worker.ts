@@ -38,7 +38,13 @@ async function ensureWhisper(){
 
 async function ensureVoice(voice:string){
   if(downloadedVoices.has(voice))return;
-  await piper.download(voice,(value:any)=>progress('tts-model',value));
+  // predict() performs the first model download and stores it in browser
+  // origin-private storage. A tiny warm-up phrase avoids an extra cold start
+  // on the child's first real spoken reply.
+  await piper.predict(
+    {text:'Hi',voiceId:voice},
+    (value:any)=>progress('tts-model',value)
+  );
   downloadedVoices.add(voice);
   self.postMessage({type:'ready',engine:'tts',device:'wasm',voice});
 }
