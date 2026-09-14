@@ -13,7 +13,7 @@ const schema=z.object({
   avatarChoice:z.string().trim().min(1).max(40).default('nova'),
   language:z.string().trim().min(2).max(40).default('English'),
   voiceGender:z.enum(['female','male']).default('female'),
-  voiceId:z.string().trim().min(2).max(60).default('af_heart')
+  voiceId:z.string().trim().min(2).max(60).default('en_US-hfc_female-medium')
 });
 
 childrenRouter.post('/',requireParentGate,async(req,res,next)=>{
