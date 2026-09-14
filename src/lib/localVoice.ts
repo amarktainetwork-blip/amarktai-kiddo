@@ -5,31 +5,28 @@ type WorkerReply={
   id?:string;
   type:string;
   text?:string;
-  samples?:ArrayBuffer;
-  sampleRate?:number;
+  blob?:Blob;
   error?:string;
   engine?:string;
   device?:string;
+  voice?:string;
 };
 
 export const LOCAL_VOICES=[
-  {id:'af_heart',label:'Heart',gender:'female',accent:'US'},
-  {id:'af_bella',label:'Bella',gender:'female',accent:'US'},
-  {id:'bf_emma',label:'Emma',gender:'female',accent:'UK'},
-  {id:'af_sky',label:'Sky',gender:'female',accent:'US'},
-  {id:'am_puck',label:'Puck',gender:'male',accent:'US'},
-  {id:'am_michael',label:'Michael',gender:'male',accent:'US'},
-  {id:'bm_fable',label:'Fable',gender:'male',accent:'UK'},
-  {id:'bm_george',label:'George',gender:'male',accent:'UK'}
+  {id:'en_US-hfc_female-medium',label:'HFC',gender:'female',accent:'US'},
+  {id:'en_US-lessac-medium',label:'Lessac',gender:'female',accent:'US'},
+  {id:'en_GB-cori-medium',label:'Cori',gender:'female',accent:'UK'},
+  {id:'en_US-hfc_male-medium',label:'HFC',gender:'male',accent:'US'},
+  {id:'en_US-ryan-medium',label:'Ryan',gender:'male',accent:'US'},
+  {id:'en_GB-alan-medium',label:'Alan',gender:'male',accent:'UK'}
 ] as const;
 
-const speedByEmotion:Record<Emotion,number>={
-  happy:1.03,excited:1.09,curious:1,thinking:.96,proud:1.01,calm:.93,
-  sad:.9,worried:.95,surprised:1.07,playful:1.08,sleepy:.86,idle:1
+const playbackRateByEmotion:Record<Emotion,number>={
+  happy:1.03,excited:1.08,curious:1,thinking:.96,proud:1.02,calm:.93,
+  sad:.9,worried:.95,surprised:1.06,playful:1.07,sleepy:.86,idle:1
 };
 
 let worker:Worker|null=null;
-let audioContext:AudioContext|null=null;
 let seq=0;
 const pending=new Map<string,Pending>();
 const readiness={tts:false,stt:false};
@@ -43,7 +40,7 @@ function ensureWorker(){
     if(msg.type==='ready'&&msg.engine){
       (readiness as any)[msg.engine]=true;
       (devices as any)[msg.engine]=msg.device||'local';
-      window.dispatchEvent(new CustomEvent('kiddo-local-voice-ready',{detail:{...readiness,...devices}}));
+      window.dispatchEvent(new CustomEvent('kiddo-local-voice-ready',{detail:{...readiness,devices:{...devices}}}));
       return;
     }
     if(!msg.id)return;
@@ -64,33 +61,27 @@ function request(payload:Record<string,unknown>,transfer:Transferable[]=[]){
   });
 }
 
-export async function prewarmLocalVoice(){
-  try{await request({type:'init'})}catch{}
+export async function prewarmLocalVoice(voice='en_US-hfc_female-medium'){
+  try{await request({type:'init',voice})}catch{}
 }
 
 export function localVoiceStatus(){
   return{...readiness,devices:{...devices}};
 }
 
-function getAudioContext(){
-  if(!audioContext)audioContext=new AudioContext();
-  return audioContext;
-}
-
 export async function playLocalSpeech(text:string,voice:string,emotion:Emotion='idle'){
-  const msg=await request({type:'tts',text,voice,speed:speedByEmotion[emotion]||1});
-  const samples=new Float32Array(msg.samples);
-  const ctx=getAudioContext();
-  if(ctx.state==='suspended')await ctx.resume();
-  const buffer=ctx.createBuffer(1,samples.length,msg.sampleRate||24000);
-  buffer.copyToChannel(samples,0);
-  const source=ctx.createBufferSource();
-  source.buffer=buffer;
-  source.connect(ctx.destination);
-  await new Promise<void>((resolve,reject)=>{
-    source.onended=()=>resolve();
-    try{source.start()}catch(error){reject(error)}
-  });
+  const msg=await request({type:'tts',text,voice});
+  if(!(msg.blob instanceof Blob))throw new Error('Local neural voice did not return audio.');
+  const url=URL.createObjectURL(msg.blob);
+  try{
+    await new Promise<void>((resolve,reject)=>{
+      const audio=new Audio(url);
+      audio.playbackRate=playbackRateByEmotion[emotion]||1;
+      audio.onended=()=>resolve();
+      audio.onerror=()=>reject(new Error('Could not play the local neural voice.'));
+      audio.play().catch(reject);
+    });
+  }finally{URL.revokeObjectURL(url)}
 }
 
 function resample(input:Float32Array,sourceRate:number,targetRate=16000){
@@ -109,27 +100,31 @@ function resample(input:Float32Array,sourceRate:number,targetRate=16000){
 }
 
 export async function transcribeLocalAudio(blob:Blob,language?:string){
-  const ctx=getAudioContext();
-  const decoded=await ctx.decodeAudioData(await blob.arrayBuffer());
-  let mono:Float32Array;
-  if(decoded.numberOfChannels===1){
-    mono=new Float32Array(decoded.getChannelData(0));
-  }else{
-    mono=new Float32Array(decoded.length);
-    for(let c=0;c<decoded.numberOfChannels;c++){
-      const channel=decoded.getChannelData(c);
-      for(let i=0;i<mono.length;i++)mono[i]+=channel[i]/decoded.numberOfChannels;
+  const ctx=new AudioContext();
+  try{
+    const decoded=await ctx.decodeAudioData(await blob.arrayBuffer());
+    let mono:Float32Array;
+    if(decoded.numberOfChannels===1){
+      mono=new Float32Array(decoded.getChannelData(0));
+    }else{
+      mono=new Float32Array(decoded.length);
+      for(let c=0;c<decoded.numberOfChannels;c++){
+        const channel=decoded.getChannelData(c);
+        for(let i=0;i<mono.length;i++)mono[i]+=channel[i]/decoded.numberOfChannels;
+      }
     }
+    const samples=resample(mono,decoded.sampleRate,16000);
+    const buffer=samples.buffer.slice(samples.byteOffset,samples.byteOffset+samples.byteLength);
+    const msg=await request({type:'stt',samples:buffer,language},[buffer]);
+    return String(msg.text||'').trim();
+  }finally{
+    await ctx.close().catch(()=>{});
   }
-  const samples=resample(mono,decoded.sampleRate,16000);
-  const buffer=samples.buffer.slice(samples.byteOffset,samples.byteOffset+samples.byteLength);
-  const msg=await request({type:'stt',samples:buffer,language},[buffer]);
-  return String(msg.text||'').trim();
 }
 
 export function voiceForGender(gender:string|undefined,current?:string){
   if(current&&LOCAL_VOICES.some(v=>v.id===current))return current;
-  return gender==='male'?'am_puck':'af_heart';
+  return gender==='male'?'en_US-hfc_male-medium':'en_US-hfc_female-medium';
 }
 
 export function supportsLocalTts(language:string|undefined){
