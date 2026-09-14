@@ -35,7 +35,7 @@ export const config = {
     baseUrl: (process.env.GENX_BASE_URL || 'https://query.genx.sh').replace(/\/$/, ''),
     chatModel: process.env.GENX_CHAT_MODEL || 'gpt-5.6-luna',
     imageModel: process.env.GENX_IMAGE_MODEL || 'genxlm-pro-v1-img-fast',
-    musicModel: process.env.GENX_MUSIC_MODEL || 'lyria-3-clip-preview',
+    musicModel: process.env.GENX_MUSIC_MODEL || 'lyria-3-pro-preview',
     ttsModel: process.env.GENX_TTS_MODEL || 'grok-tts',
     transcriptionModel: process.env.GENX_TRANSCRIPTION_MODEL || 'genxlm-pro-v1-tr',
     defaultVoice: process.env.GENX_DEFAULT_VOICE || 'aurora'
@@ -45,7 +45,7 @@ export const config = {
     baseUrl: (process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1').replace(/\/$/, ''),
     chatModel: process.env.OPENROUTER_CHAT_MODEL || 'openai/gpt-5.6-luna',
     imageModel: process.env.OPENROUTER_IMAGE_MODEL || 'openai/gpt-5-image',
-    musicModel: process.env.OPENROUTER_MUSIC_MODEL || 'google/lyria-3-clip-preview'
+    musicModel: process.env.OPENROUTER_MUSIC_MODEL || 'google/lyria-3-pro-preview'
   },
   credits: {
     starting: Number(process.env.STARTING_CREDITS || 100),
