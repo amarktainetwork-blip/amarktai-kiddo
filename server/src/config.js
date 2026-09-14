@@ -51,7 +51,8 @@ export const config = {
     image: Number(process.env.IMAGE_CREDIT_COST || 10),
     music: Number(process.env.MUSIC_CREDIT_COST || 15)
   },
-  defaultDailyMessageLimit: Number(process.env.DEFAULT_DAILY_MESSAGE_LIMIT || 80)
+  defaultDailyMessageLimit: Number(process.env.DEFAULT_DAILY_MESSAGE_LIMIT || 80),
+  mediaReconcileIntervalMs: Number(process.env.MEDIA_RECONCILE_INTERVAL_MS || 15000)
 };
 
 if (!['auto', 'genx', 'openrouter'].includes(config.aiProvider)) throw new Error('AI_PROVIDER must be auto, genx, or openrouter.');

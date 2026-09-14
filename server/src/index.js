@@ -15,6 +15,7 @@ import { settingsRouter } from './routes/settings.js';
 import { conversationsRouter } from './routes/conversations.js';
 import { chatRouter } from './routes/chat.js';
 import { mediaRouter } from './routes/media.js';
+import { startMediaReconciler } from './media-reconciler.js';
 
 const app=express();
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
@@ -22,6 +23,7 @@ const dist=path.resolve(__dirname,'../../dist');
 
 await fs.mkdir(config.mediaDir,{recursive:true});
 await initDb();
+startMediaReconciler();
 
 app.disable('x-powered-by');
 app.set('trust proxy',1);
