@@ -211,19 +211,27 @@ async function runProviderAcceptance(provider,appPort,mockPort,state){
     await api(base,'/api/auth/parent-gate/lock',{method:'POST',jar});
     r=await api(base,'/api/settings',{method:'PATCH',jar,body:{dailyMessageLimit:5}});assert.equal(r.status,403);
     r=await api(base,'/api/auth/parent-gate',{method:'POST',jar,body:{password:'Correct-Horse-Battery-88'}});assert.equal(r.status,200);
-    r=await api(base,'/api/settings',{method:'PATCH',jar,body:{dailyMessageLimit:5}});assert.equal(r.status,200);
 
-    const fresh=await api(base,'/api/children',{method:'POST',jar,body:{name:'Limit',age:10,avatarChoice:'pixel',language:'English'}});
+    const limitJar=new Map();
+    r=await api(base,'/api/auth/register',{method:'POST',jar:limitJar,body:{
+      name:'Limit Parent',email:`limit-${provider}-${Date.now()}@example.test`,password:'Correct-Horse-Battery-77',parentConsent:true
+    }});
+    assert.equal(r.status,201);
+    r=await api(base,'/api/settings',{method:'PATCH',jar:limitJar,body:{dailyMessageLimit:5}});
+    assert.equal(r.status,200);
+    const fresh=await api(base,'/api/children',{method:'POST',jar:limitJar,body:{name:'Limit',age:10,avatarChoice:'pixel',language:'English'}});
     const limitChild=fresh.payload.child.id;
     for(let i=0;i<4;i++){
-      const x=await api(base,'/api/chat',{method:'POST',jar,body:{childId:limitChild,message:`limit ${i}`,mode:'chat'}});
+      const x=await api(base,'/api/chat',{method:'POST',jar:limitJar,body:{childId:limitChild,message:`limit ${i}`,mode:'chat'}});
       assert.equal(x.status,200);
     }
     const [x1,x2]=await Promise.all([
-      api(base,'/api/chat',{method:'POST',jar,body:{childId:limitChild,message:'parallel one',mode:'chat'}}),
-      api(base,'/api/chat',{method:'POST',jar,body:{childId:limitChild,message:'parallel two',mode:'chat'}})
+      api(base,'/api/chat',{method:'POST',jar:limitJar,body:{childId:limitChild,message:'parallel one',mode:'chat'}}),
+      api(base,'/api/chat',{method:'POST',jar:limitJar,body:{childId:limitChild,message:'parallel two',mode:'chat'}})
     ]);
     assert.deepEqual([x1.status,x2.status].sort(),[200,429]);
+    r=await api(base,'/api/auth/account',{method:'DELETE',jar:limitJar,body:{password:'Correct-Horse-Battery-77'}});
+    assert.equal(r.status,204);
 
     r=await api(base,'/api/auth/export',{jar});assert.equal(r.status,200);assert.ok(r.payload.children.length>=3);
     r=await api(base,'/api/auth/account',{method:'DELETE',jar,body:{password:'Correct-Horse-Battery-88'}});assert.equal(r.status,204);
