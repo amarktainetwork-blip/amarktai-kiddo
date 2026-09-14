@@ -135,10 +135,22 @@ authRouter.delete('/account',requireUser,requireParentGate,async(req,res,next)=>
 
 authRouter.get('/me',requireUser,async(req,res)=>{
   const unlocked=isParentGateUnlocked(req,req.user.id);
-  const children=await pool.query('SELECT id,name,age,avatar_choice,language,created_at FROM children WHERE user_id=$1 ORDER BY created_at',[req.user.id]);
-  const response={user:publicUser(req.user),children:children.rows,parentGateUnlocked:unlocked};
+  const [children,settings]=await Promise.all([
+    pool.query('SELECT id,name,age,avatar_choice,language,created_at FROM children WHERE user_id=$1 ORDER BY created_at',[req.user.id]),
+    ensureSettings(req.user.id)
+  ]);
+  const response={
+    user:publicUser(req.user),
+    children:children.rows,
+    parentGateUnlocked:unlocked,
+    childSettings:{
+      media_enabled:settings.media_enabled,
+      voice_enabled:settings.voice_enabled,
+      voice_autoplay:settings.voice_autoplay
+    }
+  };
   if(unlocked){
-    response.settings=await ensureSettings(req.user.id);
+    response.settings=settings;
     const ledger=await pool.query('SELECT amount,reason,created_at FROM credit_ledger WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20',[req.user.id]);
     response.ledger=ledger.rows;
   }

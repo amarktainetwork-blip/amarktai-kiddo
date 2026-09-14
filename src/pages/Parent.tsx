@@ -34,7 +34,9 @@ export default function Parent(){
       const r=await api.settings({
         dailyMessageLimit:data.settings.daily_message_limit,
         mediaEnabled:data.settings.media_enabled,
-        memoryEnabled:data.settings.memory_enabled
+        memoryEnabled:data.settings.memory_enabled,
+        voiceEnabled:data.settings.voice_enabled,
+        voiceAutoplay:data.settings.voice_autoplay
       });
       setData({...data,settings:r.settings});setNotice('Parent controls saved.');
     }catch(e:any){setError(e.message)}
@@ -83,6 +85,8 @@ export default function Parent(){
         <label>Daily child messages<input className="input" type="number" min={5} max={500} value={settings.daily_message_limit} onChange={e=>setData({...data,settings:{...settings,daily_message_limit:Number(e.target.value)}})}/></label>
         <label className="switch-row"><span><b>Pictures & music</b><small>Allow child profiles to request generated media.</small></span><input type="checkbox" checked={settings.media_enabled} onChange={e=>setData({...data,settings:{...settings,media_enabled:e.target.checked}})}/></label>
         <label className="switch-row"><span><b>Conversation memory</b><small>Use recent chat history when Kiddo answers.</small></span><input type="checkbox" checked={settings.memory_enabled} onChange={e=>setData({...data,settings:{...settings,memory_enabled:e.target.checked}})}/></label>
+        <label className="switch-row"><span><b>Voice controls</b><small>Allow push-to-talk and read-aloud controls in child chat.</small></span><input type="checkbox" checked={settings.voice_enabled} onChange={e=>setData({...data,settings:{...settings,voice_enabled:e.target.checked}})}/></label>
+        <label className="switch-row"><span><b>Read replies aloud automatically</b><small>Kiddo speaks each new reply when voice controls are enabled.</small></span><input type="checkbox" disabled={!settings.voice_enabled} checked={settings.voice_autoplay} onChange={e=>setData({...data,settings:{...settings,voice_autoplay:e.target.checked}})}/></label>
         <button className="btn primary" onClick={saveSettings}><Save/>Save controls</button>
       </section>
       <section className="panel"><h2>Credits</h2><div className="big-number">{data.user.credits}</div><p>Credits are server controlled. Child mode cannot add, edit or bypass them.</p>
