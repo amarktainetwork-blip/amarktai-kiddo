@@ -9,8 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@huggingface/transformers": "^4.2.0",
-    "kokoro-js": "^1.2.1",
+    "@jtsage/piper-tts-web": "^1.2.0",
+    "@timur00kh/whisper.wasm": "^0.1.1",
     "lucide-react": "^0.294.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
