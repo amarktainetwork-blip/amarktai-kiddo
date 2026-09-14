@@ -1,4 +1,4 @@
-import type { Capabilities, Child, Conversation, MediaItem, Message, SessionData, Settings } from './types';
+import type { Capabilities, Child, Conversation, MediaItem, Message, SavedAction, SessionData, Settings } from './types';
 
 async function request<T>(path:string, options:RequestInit = {}):Promise<T> {
   const headers = new Headers(options.headers);
@@ -19,7 +19,49 @@ export const api={
   updateChild:(id:string,input:Partial<{name:string;age:number;avatarChoice:string;language:string;voiceGender:'female'|'male';voiceId:string}>)=>request<{child:Child}>(`/api/children/${id}`,{method:'PATCH',body:JSON.stringify(input)}),deleteChild:(id:string)=>request<void>(`/api/children/${id}`,{method:'DELETE'}),
   settings:(input:Partial<{dailyMessageLimit:number;mediaEnabled:boolean;memoryEnabled:boolean;voiceEnabled:boolean;voiceAutoplay:boolean;safetyAlertsEnabled:boolean}>)=>request<{settings:Settings}>('/api/settings',{method:'PATCH',body:JSON.stringify(input)}),
   conversations:()=>request<{conversations:Conversation[]}>('/api/conversations'),conversation:(id:string)=>request<{conversation:Conversation;messages:Message[]}>(`/api/conversations/${id}`),
-  chat:(input:{childId:string;conversationId?:string;message:string;mode:'chat'|'story'})=>request<{conversationId:string;reply:string;emotion:any;intent:'chat'|'story'|'image'|'music'|'safety';action:'none'|'generate_image'|'generate_music';segments:Array<{text:string;emotion:any}>;creation:{id:string;status:string;type:'image'|'audio'}|null;creationError?:string|null;credits:number;provider:string}>('/api/chat',{method:'POST',body:JSON.stringify(input)}),
+  chat:(input:{childId:string;conversationId?:string;message:string;mode:'chat'|'story'})=>request<{
+    conversationId:string;reply:string;emotion:any;
+    intent:'chat'|'story'|'image'|'music'|'safety'|'library';
+    action:'none'|'generate_image'|'generate_music'|'play_saved_audio'|'show_saved_image'|'read_saved_story';
+    savedAction?:SavedAction;
+    segments:Array<{text:string;emotion:any}>;
+    creation:{id:string;status:string;type:'image'|'audio'}|null;
+    creationError?:string|null;
+    credits:number;provider:string;freeReplay?:boolean
+  }>('/api/chat',{method:'POST',body:JSON.stringify(input)}),
+  streamChat:async(
+    input:{childId:string;conversationId?:string;message:string},
+    onEvent:(event:any)=>void
+  )=>{
+    const response=await fetch('/api/chat/stream',{
+      method:'POST',credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({...input,mode:'chat'})
+    });
+    if(!response.ok){
+      const body=await response.json().catch(()=>({}));
+      throw new Error(body?.error||`Streaming chat failed (${response.status})`);
+    }
+    if(!response.body)throw new Error('Streaming chat did not return a response body.');
+    const reader=response.body.getReader();
+    const decoder=new TextDecoder();
+    let buffer='';
+    while(true){
+      const {done,value}=await reader.read();
+      if(done)break;
+      buffer+=decoder.decode(value,{stream:true});
+      const blocks=buffer.split(/\n\n/);
+      buffer=blocks.pop()||'';
+      for(const block of blocks){
+        for(const line of block.split(/\r?\n/)){
+          if(!line.startsWith('data:'))continue;
+          const raw=line.slice(5).trim();
+          if(!raw)continue;
+          try{onEvent(JSON.parse(raw))}catch{}
+        }
+      }
+    }
+  },
   media:()=>request<{media:MediaItem[]}>('/api/media'),generateMedia:(input:{childId:string;prompt:string;type:'image'|'audio'})=>request<{media:{id:string;status:string;type:string};credits?:number;provider:string}>('/api/media/generate',{method:'POST',body:JSON.stringify(input)}),
   mediaStatus:(id:string)=>request<{media:{id:string;status:string;type:string;error?:string}}>(`/api/media/${id}/status`),deleteMedia:(id:string)=>request<void>(`/api/media/${id}`,{method:'DELETE'}),
   transcribeVoice:async(blob:Blob)=>{
