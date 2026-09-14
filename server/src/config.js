@@ -25,6 +25,11 @@ export const config = {
   },
   mediaDir: process.env.MEDIA_DIR || '/data/media',
   aiProvider: (process.env.AI_PROVIDER || 'auto').toLowerCase(),
+  timeouts: {
+    text: Number(process.env.AI_TEXT_TIMEOUT_MS || 45000),
+    media: Number(process.env.AI_MEDIA_TIMEOUT_MS || 120000),
+    health: Number(process.env.AI_HEALTH_TIMEOUT_MS || 10000)
+  },
   genx: {
     key: process.env.GENX_API_KEY?.trim() || '',
     baseUrl: (process.env.GENX_BASE_URL || 'https://query.genx.sh').replace(/\/$/, ''),
@@ -35,8 +40,9 @@ export const config = {
   openrouter: {
     key: process.env.OPENROUTER_API_KEY?.trim() || '',
     baseUrl: (process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1').replace(/\/$/, ''),
-    chatModel: process.env.OPENROUTER_CHAT_MODEL || 'openai/gpt-5.3-chat',
-    imageModel: process.env.OPENROUTER_IMAGE_MODEL || 'openai/gpt-5-image'
+    chatModel: process.env.OPENROUTER_CHAT_MODEL || 'openai/gpt-5.6-luna',
+    imageModel: process.env.OPENROUTER_IMAGE_MODEL || 'openai/gpt-5-image',
+    musicModel: process.env.OPENROUTER_MUSIC_MODEL || 'google/lyria-3-clip-preview'
   },
   credits: {
     starting: Number(process.env.STARTING_CREDITS || 100),
@@ -51,4 +57,6 @@ export const config = {
 if (!['auto', 'genx', 'openrouter'].includes(config.aiProvider)) throw new Error('AI_PROVIDER must be auto, genx, or openrouter.');
 if (config.aiProvider === 'genx' && !config.genx.key) throw new Error('AI_PROVIDER=genx requires GENX_API_KEY.');
 if (config.aiProvider === 'openrouter' && !config.openrouter.key) throw new Error('AI_PROVIDER=openrouter requires OPENROUTER_API_KEY.');
-if (config.aiProvider === 'auto' && !config.genx.key && !config.openrouter.key) console.warn('No AI key configured. Add GENX_API_KEY or OPENROUTER_API_KEY to enable AI features.');
+if (config.aiProvider === 'auto' && !config.genx.key && !config.openrouter.key) {
+  console.warn('No AI key configured. Add GENX_API_KEY or OPENROUTER_API_KEY to enable AI features.');
+}

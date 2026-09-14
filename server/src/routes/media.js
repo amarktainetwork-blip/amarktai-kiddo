@@ -7,16 +7,43 @@ import { config } from '../config.js';
 import { pool, withTransaction } from '../db.js';
 import { assertChildOwner, requireUser } from '../auth.js';
 import { precheckChildMessage } from '../safety.js';
-import { downloadGenxJobFile, generateOpenRouterImage, getGenxJob, submitGenxMedia } from '../providers.js';
+import {
+  downloadGenxJobFile,
+  generateOpenRouterImage,
+  generateOpenRouterMusic,
+  getGenxJob,
+  providerOrder,
+  submitGenxMedia
+} from '../providers.js';
 import { deductCredits, ensureSettings, refundCredits } from '../services.js';
 
 export const mediaRouter=Router();
 mediaRouter.use(requireUser);
+
 const schema=z.object({
   childId:z.string().uuid(),
   prompt:z.string().trim().min(3).max(2000),
   type:z.enum(['image','audio'])
 });
+
+function extensionForMime(mime,type){
+  if(mime.includes('mpeg')||mime.includes('mp3'))return'.mp3';
+  if(mime.includes('wav'))return'.wav';
+  if(mime.includes('ogg'))return'.ogg';
+  if(mime.includes('jpeg'))return'.jpg';
+  if(mime.includes('webp'))return'.webp';
+  if(mime.includes('svg'))return'.svg';
+  return type==='audio'?'.wav':'.png';
+}
+
+async function saveBuffer(id,type,buffer,mimeType){
+  const local=path.join(config.mediaDir,`${id}${extensionForMime(mimeType,type)}`);
+  await fs.writeFile(local,buffer);
+  await pool.query(
+    'UPDATE media_items SET local_path=$1,mime_type=$2,status=$3,updated_at=NOW() WHERE id=$4',
+    [local,mimeType,'ready',id]
+  );
+}
 
 async function saveImage(id,source){
   let buffer,mime='image/png';
@@ -25,18 +52,12 @@ async function saveImage(id,source){
     mime=h.match(/^data:([^;]+)/)?.[1]||mime;
     buffer=Buffer.from(d,'base64');
   }else{
-    const r=await fetch(source);
+    const r=await fetch(source,{signal:AbortSignal.timeout(config.timeouts.media)});
     if(!r.ok)throw new Error(`Image download failed (${r.status}).`);
     mime=r.headers.get('content-type')||mime;
     buffer=Buffer.from(await r.arrayBuffer());
   }
-  const ext=mime.includes('jpeg')?'.jpg':mime.includes('webp')?'.webp':'.png';
-  const local=path.join(config.mediaDir,`${id}${ext}`);
-  await fs.writeFile(local,buffer);
-  await pool.query(
-    'UPDATE media_items SET local_path=$1,mime_type=$2,status=$3,updated_at=NOW() WHERE id=$4',
-    [local,mime,'ready',id]
-  );
+  await saveBuffer(id,'image',buffer,mime);
 }
 
 async function failAndRefund(mediaId,userId,message){
@@ -67,9 +88,8 @@ mediaRouter.post('/generate',async(req,res,next)=>{
     const safe=precheckChildMessage(i.prompt);
     if(!safe.allowed)return res.status(400).json({error:safe.reason,safeBlocked:true});
 
-    if(i.type==='audio'&&!config.genx.key){
-      return res.status(503).json({error:'Music generation requires a GenX API key. Chat, stories and pictures still work with OpenRouter.'});
-    }
+    const order=providerOrder();
+    if(!order.length)return res.status(503).json({error:'No AI provider is configured.'});
 
     id=randomUUID();
     const cost=i.type==='audio'?config.credits.music:config.credits.image;
@@ -83,31 +103,47 @@ mediaRouter.post('/generate',async(req,res,next)=>{
       return deductCredits(client,req.user.id,cost,i.type==='audio'?'Music generation':'Image generation');
     });
 
-    try{
-      if(i.type==='image'&&!config.genx.key&&config.openrouter.key){
-        const g=await generateOpenRouterImage(
-          `For a ${child.age}-year-old child. Friendly, non-scary, no text unless requested. ${i.prompt}`
-        );
-        await pool.query('UPDATE media_items SET provider=$1 WHERE id=$2',[g.provider,id]);
-        await saveImage(id,g.image);
-        return res.status(201).json({media:{id,status:'ready',type:'image'},credits,provider:g.provider});
-      }
+    const prompt=i.type==='audio'
+      ? `Create a child-safe 30-second music clip for a ${child.age}-year-old. No explicit, frightening, violent or adult lyrics. If vocals are used, use ${child.language}. Creative request: ${i.prompt}`
+      : `Create a cute, child-safe illustration for a ${child.age}-year-old. Friendly, non-scary, no text unless requested. Creative request: ${i.prompt}`;
 
-      const job=await submitGenxMedia(
-        i.type,
-        `Child-safe, warm, age-appropriate for age ${child.age}. ${i.prompt}`,
-        {media_id:id,user_id:req.user.id,child_id:child.id}
-      );
-      await pool.query(
-        'UPDATE media_items SET provider=$1,provider_job_id=$2,status=$3,updated_at=NOW() WHERE id=$4',
-        [job.provider,job.jobId,'processing',id]
-      );
-      return res.status(202).json({media:{id,status:'processing',type:i.type},credits,provider:job.provider});
-    }catch(error){
-      await failAndRefund(id,req.user.id,error.message).catch(()=>{});
-      throw error;
+    const errors=[];
+    for(const provider of order){
+      try{
+        if(provider==='genx'){
+          const job=await submitGenxMedia(
+            i.type,
+            prompt,
+            {media_id:id,user_id:req.user.id,child_id:child.id}
+          );
+          await pool.query(
+            'UPDATE media_items SET provider=$1,provider_job_id=$2,status=$3,updated_at=NOW() WHERE id=$4',
+            [job.provider,job.jobId,'processing',id]
+          );
+          return res.status(202).json({media:{id,status:'processing',type:i.type},credits,provider:job.provider});
+        }
+
+        if(i.type==='image'){
+          const generated=await generateOpenRouterImage(prompt);
+          await pool.query('UPDATE media_items SET provider=$1 WHERE id=$2',[generated.provider,id]);
+          await saveImage(id,generated.image);
+          return res.status(201).json({media:{id,status:'ready',type:'image'},credits,provider:generated.provider});
+        }
+
+        const generated=await generateOpenRouterMusic(prompt);
+        await pool.query('UPDATE media_items SET provider=$1 WHERE id=$2',[generated.provider,id]);
+        await saveBuffer(id,'audio',generated.buffer,generated.mimeType);
+        return res.status(201).json({media:{id,status:'ready',type:'audio'},credits,provider:generated.provider});
+      }catch(error){
+        errors.push(`${provider}: ${error.message}`);
+      }
     }
-  }catch(e){next(e)}
+
+    throw new Error(`No configured AI provider completed the media request. ${errors.join(' | ')}`);
+  }catch(e){
+    if(id)await failAndRefund(id,req.user.id,e.message).catch(()=>{});
+    next(e);
+  }
 });
 
 mediaRouter.get('/',async(req,res)=>{
@@ -132,17 +168,7 @@ mediaRouter.get('/:id/status',async(req,res,next)=>{
 
     if(['completed','succeeded','success','ready'].includes(status)){
       const f=await downloadGenxJobFile(m.provider_job_id);
-      const ext=f.mimeType.includes('mpeg')?'.mp3':
-        f.mimeType.includes('wav')?'.wav':
-        f.mimeType.includes('jpeg')?'.jpg':
-        f.mimeType.includes('webp')?'.webp':
-        m.type==='audio'?'.mp3':'.png';
-      const local=path.join(config.mediaDir,`${m.id}${ext}`);
-      await fs.writeFile(local,f.buffer);
-      await pool.query(
-        'UPDATE media_items SET status=$1,local_path=$2,mime_type=$3,updated_at=NOW() WHERE id=$4',
-        ['ready',local,f.mimeType,m.id]
-      );
+      await saveBuffer(m.id,m.type,f.buffer,f.mimeType);
       return res.json({media:{id:m.id,status:'ready',type:m.type}});
     }
 
