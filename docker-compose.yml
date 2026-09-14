@@ -1,0 +1,66 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      POSTGRES_DB: ${DB_NAME:-kiddo}
+      POSTGRES_USER: ${DB_USER:-kiddo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - kiddo_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-kiddo} -d ${DB_NAME:-kiddo}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    logging: *default-logging
+    env_file: .env
+    environment:
+      MEDIA_DIR: /data/media
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - kiddo_media:/data/media
+    expose:
+      - "3001"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  caddy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  kiddo_db:
+  kiddo_media:
+  caddy_data:
+  caddy_config:

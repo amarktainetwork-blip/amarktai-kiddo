@@ -1,260 +1,241 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getCurrentUser, getChildren, createConversation, addMessage, getMessages, getClarificationState, setClarificationState, clearClarificationState, addMediaItem, updateUserCredits } from '../lib/store';
-import { generateAIResponse, generateAudio, generateImage, detectEmotion } from '../lib/generators';
+import { FormEvent,useEffect,useMemo,useRef,useState } from 'react';
+import { useLocation,useNavigate } from 'react-router-dom';
+import { BookOpen,Image,MessageCircle,Mic,MicOff,Music2,Send,Sparkles,Volume2 } from 'lucide-react';
+import AppShell from '../components/AppShell';
 import CompanionAvatar from '../components/CompanionAvatar';
+import { api } from '../lib/api';
+import type { Capabilities,Child,Emotion,Message,SessionData } from '../lib/types';
 
-export default function Chat() {
-  const navigate = useNavigate();
-  const user = getCurrentUser();
-  const [children, setChildren] = useState<any[]>([]);
-  const [selectedChild, setSelectedChild] = useState<any>(null);
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<any[]>([]);
-  const [input, setInput] = useState('');
-  const [currentEmotion, setCurrentEmotion] = useState('idle');
-  const [isTyping, setIsTyping] = useState(false);
-  const [clarification, setClarification] = useState<any>(null);
+const speechLocales:Record<string,string>={
+  English:'en-ZA',
+  Afrikaans:'af-ZA',
+  Zulu:'zu-ZA'
+};
 
-  useEffect(() => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
+export default function Chat(){
+  const n=useNavigate();
+  const loc=useLocation();
+  const requestedConversationId=new URLSearchParams(loc.search).get('conversation')||undefined;
+  const recognitionRef=useRef<any>(null);
 
-    const kids = getChildren(user.id);
-    setChildren(kids);
-    
-    if (kids.length > 0 && !selectedChild) {
-      setSelectedChild(kids[0]);
-    }
-  }, [user, navigate]);
+  const[session,setSession]=useState<SessionData|null>(null);
+  const[caps,setCaps]=useState<Capabilities|null>(null);
+  const[childId,setChildId]=useState('');
+  const[conversationId,setConversationId]=useState<string|undefined>(requestedConversationId);
+  const[messages,setMessages]=useState<Message[]>([]);
+  const[input,setInput]=useState('');
+  const[mode,setMode]=useState<'chat'|'story'>('chat');
+  const[emotion,setEmotion]=useState<Emotion>('idle');
+  const[busy,setBusy]=useState(false);
+  const[error,setError]=useState('');
+  const[createType,setCreateType]=useState<'image'|'audio'|null>(null);
+  const[listening,setListening]=useState(false);
+  const[speaking,setSpeaking]=useState(false);
 
-  useEffect(() => {
-    if (selectedChild && !conversationId) {
-      const convId = createConversation(user!.id, selectedChild.id, 'chat', 'New Chat');
-      setConversationId(convId);
-      const msgs = getMessages(convId);
-      setMessages(msgs);
-    }
-  }, [selectedChild, user]);
+  useEffect(()=>{
+    void api.lockParent().catch(()=>{});
+    Promise.all([api.me(),api.status()])
+      .then(([me,s])=>{
+        setSession(me);
+        setCaps(s.capabilities);
+        if(!requestedConversationId&&me.children[0])setChildId(me.children[0].id);
+      })
+      .catch(()=>n('/login'));
 
-  const handleSend = () => {
-    if (!input.trim() || !conversationId || !user) return;
+    return()=>{
+      try{recognitionRef.current?.stop?.()}catch{}
+      if('speechSynthesis' in window)window.speechSynthesis.cancel();
+    };
+  },[]);
 
-    // Check if this is a clarification answer
-    if (clarification) {
-      handleClarificationAnswer(input);
-      return;
-    }
+  useEffect(()=>{
+    if(!conversationId)return;
+    api.conversation(conversationId)
+      .then(r=>{
+        setMessages(r.messages);
+        setChildId(r.conversation.child_id);
+        setMode(r.conversation.mode);
+        const last=[...r.messages].reverse().find(m=>m.role==='assistant'&&m.emotion);
+        if(last?.emotion)setEmotion(last.emotion);
+      })
+      .catch(e=>setError(e.message));
+  },[conversationId]);
 
-    // Add user message
-    addMessage(conversationId, 'user', input);
-    
-    // Check if this is a music or story request
-    const lowerInput = input.toLowerCase();
-    const isMusicRequest = lowerInput.includes('music') || lowerInput.includes('song') || lowerInput.includes('create audio');
-    const isStoryRequest = lowerInput.includes('story') || lowerInput.includes('create story');
-
-    if (isMusicRequest || isStoryRequest) {
-      // Check credits
-      if (user.credits < 10) {
-        addMessage(conversationId, 'assistant', 'Sorry, you need at least 10 credits to create music or stories. You can earn more credits by chatting!');
-        const msgs = getMessages(conversationId);
-        setMessages(msgs);
-        setInput('');
-        return;
-      }
-
-      // Start clarification flow
-      const clarState = {
-        conversationId,
-        step: 1,
-        data: { type: isMusicRequest ? 'music' : 'story' }
-      };
-      setClarificationState(conversationId, clarState);
-      
-      const question = isMusicRequest 
-        ? 'What kind of music would you like me to create? (e.g., happy, sad, energetic)'
-        : 'What kind of story would you like me to create? (e.g., adventure, fairy tale, mystery)';
-      
-      addMessage(conversationId, 'assistant', question);
-      setClarification(clarState);
-      
-      const msgs = getMessages(conversationId);
-      setMessages(msgs);
-      setInput('');
-      return;
-    }
-
-    // Regular chat
-    setIsTyping(true);
-    setCurrentEmotion('thinking');
-
-    setTimeout(() => {
-      const emotion = detectEmotion(input);
-      const response = generateAIResponse(input, emotion);
-      
-      addMessage(conversationId, 'assistant', response, emotion);
-      setCurrentEmotion(emotion);
-      setIsTyping(false);
-      
-      const msgs = getMessages(conversationId);
-      setMessages(msgs);
-      setInput('');
-    }, 1000);
-  };
-
-  const handleClarificationAnswer = (answer: string) => {
-    if (!clarification || !conversationId || !user || !selectedChild) return;
-
-    addMessage(conversationId, 'user', answer);
-    
-    if (clarification.step === 1) {
-      // First clarification answer
-      const newState = {
-        ...clarification,
-        step: 2,
-        data: { ...clarification.data, style: answer }
-      };
-      setClarificationState(conversationId, newState);
-      setClarification(newState);
-
-      const question = clarification.data.type === 'music'
-        ? 'Great! What mood should it have? (e.g., calm, upbeat, mysterious)'
-        : 'Great! What should the main character be like? (e.g., brave, curious, kind)';
-      
-      addMessage(conversationId, 'assistant', question);
-      
-      const msgs = getMessages(conversationId);
-      setMessages(msgs);
-      setInput('');
-    } else if (clarification.step === 2) {
-      // Second clarification answer - generate content
-      const newState = {
-        ...clarification,
-        step: 3,
-        data: { ...clarification.data, mood: answer }
-      };
-      setClarification(newState);
-
-      setIsTyping(true);
-      setCurrentEmotion('thinking');
-
-      setTimeout(() => {
-        const prompt = `${clarification.data.style} ${answer}`;
-        
-        if (clarification.data.type === 'music') {
-          // Generate audio
-          const audioData = generateAudio(prompt, 5);
-          const title = `Music: ${clarification.data.style}`;
-          addMediaItem(user.id, selectedChild.id, conversationId, 'audio', title, prompt, audioData);
-          
-          // Deduct credits
-          updateUserCredits(user.id, -10);
-          
-          addMessage(conversationId, 'assistant', `I've created a ${clarification.data.style} song for you! You can find it in your library. 🎵`);
-        } else {
-          // Generate image for story
-          const imageData = generateImage(prompt);
-          const title = `Story: ${clarification.data.style}`;
-          addMediaItem(user.id, selectedChild.id, conversationId, 'image', title, prompt, imageData);
-          
-          // Deduct credits
-          updateUserCredits(user.id, -10);
-          
-          addMessage(conversationId, 'assistant', `I've created a ${clarification.data.style} story illustration for you! You can find it in your library. 📖`);
-        }
-
-        clearClarificationState(conversationId);
-        setClarification(null);
-        setCurrentEmotion('happy');
-        setIsTyping(false);
-        
-        const msgs = getMessages(conversationId);
-        setMessages(msgs);
-        setInput('');
-      }, 2000);
-    }
-  };
-
-  if (!user || !selectedChild) {
-    return <div>Loading...</div>;
-  }
-
-  return (
-    <div className="min-h-screen flex flex-col">
-      <div className="flex-1 flex flex-col md:flex-row">
-        {/* Sidebar */}
-        <div className="w-full md:w-64 bg-white/5 p-4">
-          <h2 className="text-white font-bold mb-4">Children</h2>
-          {children.map(child => (
-            <button
-              key={child.id}
-              onClick={() => {
-                setSelectedChild(child);
-                setConversationId(null);
-              }}
-              className={`w-full text-left p-3 rounded-lg mb-2 transition-colors ${
-                selectedChild.id === child.id ? 'bg-indigo-600' : 'bg-white/5 hover:bg-white/10'
-              }`}
-            >
-              <div className="text-white font-semibold">{child.name}</div>
-              <div className="text-white/60 text-sm">Age {child.age}</div>
-            </button>
-          ))}
-        </div>
-
-        {/* Chat area */}
-        <div className="flex-1 flex flex-col">
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="max-w-3xl mx-auto">
-              {messages.map(msg => (
-                <div key={msg.id} className={`mb-4 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                  <div className={`inline-block p-3 rounded-lg ${
-                    msg.role === 'user' ? 'bg-indigo-600' : 'bg-white/10'
-                  }`}>
-                    {msg.content}
-                  </div>
-                </div>
-              ))}
-              {isTyping && (
-                <div className="text-left mb-4">
-                  <div className="inline-block p-3 rounded-lg bg-white/10">
-                    <div className="flex gap-1">
-                      <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-                      <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                      <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Input area */}
-          <div className="border-t border-white/10 p-4">
-            <div className="max-w-3xl mx-auto flex gap-2">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="Type your message..."
-                className="flex-1 input"
-              />
-              <button onClick={handleSend} className="btn-primary">
-                Send
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Avatar sidebar */}
-        <div className="w-full md:w-64 bg-white/5 p-4 flex items-center justify-center">
-          <CompanionAvatar emotion={currentEmotion} isSpeaking={isTyping} />
-        </div>
-      </div>
-    </div>
+  const child:Child|undefined=useMemo(
+    ()=>session?.children.find(c=>c.id===childId),
+    [session,childId]
   );
+
+  const voiceEnabled=Boolean(caps?.voice)&&session?.childSettings?.voice_enabled!==false;
+  const mediaEnabled=session?.childSettings?.media_enabled!==false;
+  const voiceAutoplay=voiceEnabled&&session?.childSettings?.voice_autoplay===true;
+  const speechLocale=speechLocales[child?.language||'English']||'en-ZA';
+
+  const speak=(text:string)=>{
+    if(!voiceEnabled||!('speechSynthesis' in window))return;
+    window.speechSynthesis.cancel();
+    const utterance=new SpeechSynthesisUtterance(text);
+    utterance.lang=speechLocale;
+    utterance.rate=.98;
+    utterance.pitch=1.08;
+    const voices=window.speechSynthesis.getVoices();
+    const preferred=voices.find(v=>v.lang.toLowerCase()===speechLocale.toLowerCase())||
+      voices.find(v=>v.lang.toLowerCase().startsWith(speechLocale.slice(0,2).toLowerCase()));
+    if(preferred)utterance.voice=preferred;
+    utterance.onstart=()=>setSpeaking(true);
+    utterance.onend=()=>setSpeaking(false);
+    utterance.onerror=()=>setSpeaking(false);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const toggleListening=()=>{
+    if(!voiceEnabled)return;
+    if(listening){
+      recognitionRef.current?.stop?.();
+      return;
+    }
+    const Recognition=(window as any).SpeechRecognition||(window as any).webkitSpeechRecognition;
+    if(!Recognition){
+      setError('Voice input is not supported by this browser. You can still type and use read-aloud.');
+      return;
+    }
+
+    const recognition=new Recognition();
+    recognition.lang=speechLocale;
+    recognition.continuous=false;
+    recognition.interimResults=true;
+    recognition.maxAlternatives=1;
+    recognition.onstart=()=>{setListening(true);setError('')};
+    recognition.onresult=(event:any)=>{
+      let transcript='';
+      for(let i=event.resultIndex;i<event.results.length;i++){
+        transcript+=event.results[i][0]?.transcript||'';
+      }
+      if(transcript.trim())setInput(transcript.trim());
+    };
+    recognition.onerror=(event:any)=>{
+      if(event?.error!=='aborted')setError('I could not hear that clearly. Try the microphone again or type your message.');
+    };
+    recognition.onend=()=>{setListening(false);recognitionRef.current=null};
+    recognitionRef.current=recognition;
+    recognition.start();
+  };
+
+  const send=async(e:FormEvent)=>{
+    e.preventDefault();
+    if(!input.trim()||!childId||busy)return;
+    const value=input.trim();
+    const optimistic:Message={role:'user',content:value};
+    setInput('');
+    setError('');
+    setMessages(m=>[...m,optimistic]);
+    setBusy(true);
+    setEmotion('thinking');
+
+    try{
+      const r=await api.chat({childId,conversationId,message:value,mode});
+      setConversationId(r.conversationId);
+      setMessages(m=>[...m,{role:'assistant',content:r.reply,emotion:r.emotion}]);
+      setEmotion(r.emotion);
+      if(session)setSession({...session,user:{...session.user,credits:r.credits}});
+      if(voiceAutoplay)speak(r.reply);
+    }catch(err:any){
+      setMessages(m=>{
+        const copy=[...m];
+        const index=copy.lastIndexOf(optimistic);
+        if(index>=0)copy.splice(index,1);
+        return copy;
+      });
+      setError(err.message);
+      setEmotion('worried');
+    }finally{
+      setBusy(false);
+    }
+  };
+
+  const create=async(type:'image'|'audio')=>{
+    if(!childId||!input.trim()||busy||!mediaEnabled)return;
+    const value=input.trim();
+    setError('');
+    setCreateType(type);
+    setBusy(true);
+    try{
+      const r=await api.generateMedia({childId,prompt:value,type});
+      setInput('');
+      if(r.media.status==='ready')n('/library');
+      else{
+        setMessages(m=>[...m,{
+          role:'assistant',
+          content:`I started your ${type==='image'?'picture':'music'}! It will appear in the Library when it is ready.`,
+          emotion:'excited'
+        }]);
+        setEmotion('excited');
+      }
+    }catch(err:any){
+      setError(err.message);
+      setEmotion('worried');
+    }finally{
+      setBusy(false);
+      setCreateType(null);
+    }
+  };
+
+  if(!session)return <AppShell><div className="loading">Loading Kiddo…</div></AppShell>;
+  if(!session.children.length)return <AppShell><div className="empty-state"><CompanionAvatar emotion="curious"/><h2>Add a child profile first</h2><button className="btn primary" onClick={()=>n('/parent')}>Open Parent Controls</button></div></AppShell>;
+
+  const avatarEmotion:Emotion=listening?'curious':emotion;
+
+  return <AppShell><div className="chat-page">
+    <header className="chat-head">
+      <div><span className="eyebrow">Creative companion</span><h1>{child?.name}'s Kiddo</h1></div>
+      <div className="chat-controls">
+        <select value={childId} onChange={e=>{setChildId(e.target.value);setConversationId(undefined);setMessages([])}}>
+          {session.children.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <div className="mode-tabs">
+          <button className={mode==='chat'?'active':''} onClick={()=>setMode('chat')}><MessageCircle/>Chat</button>
+          <button className={mode==='story'?'active':''} onClick={()=>setMode('story')}><BookOpen/>Story</button>
+        </div>
+        <div className="credit-pill small"><Sparkles size={15}/>{session.user.credits}</div>
+      </div>
+    </header>
+
+    <div className="chat-layout">
+      <aside className="avatar-panel">
+        <CompanionAvatar emotion={avatarEmotion} name="Kiddo" speaking={busy||speaking||listening} variant={child?.avatar_choice}/>
+        <p>{listening?'I’m listening…':speaking?'Reading it aloud…':busy?'Thinking with you…':emotion==='idle'?'Ready when you are.':`Feeling ${emotion}.`}</p>
+        <div className="voice-badge">{voiceEnabled?'🎙️ Voice ready':'🔇 Voice off by parent'}</div>
+        <div className="quick-prompts">
+          <button onClick={()=>setInput('Tell me a funny science fact')}>🧪 Science surprise</button>
+          <button onClick={()=>setInput('Let’s invent a magical animal together')}>🦄 Invent something</button>
+          <button onClick={()=>{setMode('story');setInput('Tell me an adventure about a brave little explorer')}}>📚 Story idea</button>
+        </div>
+      </aside>
+
+      <section className="messages">
+        <div className="message-scroll">
+          {!messages.length&&<div className="welcome-bubble"><h2>What should we do today?</h2><p>Type or talk to Kiddo, invent a story, make a picture, or create music.</p></div>}
+          {messages.map((m,i)=><div key={m.id||i} className={`bubble ${m.role}`}>
+            <span>{m.content}</span>
+            {m.role==='assistant'&&voiceEnabled&&<button className="speak-message" onClick={()=>speak(m.content)} title="Read this reply aloud"><Volume2 size={15}/></button>}
+          </div>)}
+          {busy&&<div className="bubble assistant typing"><i/><i/><i/></div>}
+        </div>
+
+        {error&&<div className="notice error">{error}</div>}
+
+        <form className="composer" onSubmit={send}>
+          <textarea value={input} onChange={e=>setInput(e.target.value)} placeholder={listening?'Listening…':mode==='story'?'What should the story be about?':'Say or type something to Kiddo…'} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();e.currentTarget.form?.requestSubmit()}}}/>
+          <div className="composer-actions">
+            <div>
+              <button type="button" className={listening?'voice-control listening':'voice-control'} disabled={!voiceEnabled||busy} onClick={toggleListening} title={voiceEnabled?'Push to talk':'Voice disabled in Parent Controls'}>{listening?<MicOff/>:<Mic/>}{listening?'Stop':'Talk'}</button>
+              <button type="button" disabled={!caps?.image||!mediaEnabled||busy} onClick={()=>create('image')} title={mediaEnabled?'Create a picture':'Pictures and music disabled in Parent Controls'}><Image/>{createType==='image'?'Creating…':'Picture'}</button>
+              <button type="button" disabled={!caps?.music||!mediaEnabled||busy} onClick={()=>create('audio')} title={mediaEnabled?'Create music':'Pictures and music disabled in Parent Controls'}><Music2/>{createType==='audio'?'Creating…':'Music'}</button>
+            </div>
+            <button className="send-btn" disabled={!input.trim()||busy} type="submit"><Send/></button>
+          </div>
+        </form>
+      </section>
+    </div>
+  </div></AppShell>;
 }

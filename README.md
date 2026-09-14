@@ -1,262 +1,180 @@
-# Amarktai Kiddo - AI Companion for Kids
+# Amarktai Kiddo
 
-A complete AI companion application for children with chat, music generation, and story creation features.
+A parent-controlled creative AI companion for children ages 3–12.
 
-## 🎯 Features Implemented
+## Production architecture
 
-### Phase 1: Core Generation Pipeline ✅
-- **Music Generation**: Generate playable WAV audio files with custom melodies
-- **Image Generation**: Generate viewable PNG images using canvas
-- **Clarification Flow**: Multi-step conversation to refine music/story requests
-- **Emotion Detection**: AI detects emotions from user input and responds accordingly
-- **Credit System**: Users earn and spend credits for premium features
+- React/Vite PWA frontend
+- One Express API served from the same origin
+- PostgreSQL for parent accounts, child profiles, conversations, usage limits, credits and media metadata
+- HTTP-only parent session cookie plus password-protected Parent Controls
+- Private generated media on the Webdock VPS volume
+- GenX **or** OpenRouter server-side AI adapter
+- Docker Compose + Caddy HTTPS for Webdock
+- Automatic async GenX media reconciliation
+- GitHub CI with frontend build/typecheck, dependency audit, PostgreSQL integration testing and dual-provider acceptance
 
-### Phase 2: Child Dashboard & Library ✅
-- **Dashboard**: Overview of recent conversations and media
-- **Media Library**: Browse all generated audio and images
-- **Media Players**: Built-in audio player and image viewer
-- **Child Management**: Add and manage multiple children profiles
+Provider/model choices are never exposed to a child.
 
-## 🚀 Getting Started
+## AI provider parity
 
-### Prerequisites
-- Node.js 18+
-- npm or yarn
+Set one of:
 
-### Installation
+```env
+AI_PROVIDER=genx
+GENX_API_KEY=...
+```
+
+or:
+
+```env
+AI_PROVIDER=openrouter
+OPENROUTER_API_KEY=...
+```
+
+or configure both and use:
+
+```env
+AI_PROVIDER=auto
+GENX_API_KEY=...
+OPENROUTER_API_KEY=...
+```
+
+The visible Kiddo feature set is the same whichever provider is selected:
+
+- chat
+- stories
+- image generation
+- music generation
+- parent-controlled voice input/read-aloud UI
+- emotional companion reactions
+- private media library
+
+Default provider models are defined in `.env.example`. GenX image/music models may be left blank so Kiddo discovers a compatible current model from the GenX catalog. OpenRouter defaults are explicitly pinned in environment configuration.
+
+Voice input/read-aloud uses browser speech capabilities so the child experience does not change with the AI provider. Parent Controls can disable voice entirely or enable automatic read-aloud.
+
+## First Webdock deployment
+
+Clone the repository **only after the approved recovery PR is merged to `main`**.
 
 ```bash
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
+sudo mkdir -p /opt/amarktai-kiddo
+sudo chown "$USER":"$USER" /opt/amarktai-kiddo
+cd /opt/amarktai-kiddo
+git clone https://github.com/amarktainetwork-blip/amarktai-kiddo.git .
+git checkout main
+git pull --ff-only
+git rev-parse HEAD
 ```
 
-### Access the App
+Create the production environment:
 
-1. Open your browser to `http://localhost:5173`
-2. Click "Register" to create an account
-3. Add your child's profile (name, age, avatar, language)
-4. Start chatting with Kiddo!
-
-## 📁 Project Structure
-
-```
-src/
-├── App.tsx                    # Main app with routing
-├── index.css                  # Global styles with Tailwind
-├── main.tsx                   # Entry point
-├── components/
-│   ├── CompanionAvatar.tsx    # Animated AI avatar with emotions
-│   └── MediaPlayers.tsx       # Audio and image players
-├── lib/
-│   ├── store.ts               # localStorage data management
-│   └── generators.ts          # Audio/image generation logic
-└── pages/
-    ├── Home.tsx               # Landing page
-    ├── Login.tsx              # User login
-    ├── Register.tsx           # User registration with child profile
-    ├── Chat.tsx               # Chat interface with clarification
-    ├── Dashboard.tsx          # User dashboard
-    └── Library.tsx            # Media library browser
-```
-
-## 🎨 Features
-
-### Chat System
-- Real-time conversations with AI companion
-- Emotion detection and responsive avatar
-- Clarification flow for music/story generation
-- Credit-based premium features
-
-### Music Generation
-- Generates actual playable WAV audio files
-- Custom melodies based on user prompts
-- 5-second duration clips
-- Stored in media library
-
-### Image Generation
-- Generates PNG images using HTML5 Canvas
-- Custom visuals based on prompts
-- Full-screen image viewer
-- Stored in media library
-
-### Companion Avatar
-- Animated character with 9 emotional states
-- Real-time emotion display
-- Visual feedback during interactions
-- Customizable per child
-
-### Dashboard
-- Overview of recent activity
-- Quick access to conversations
-- Media preview
-- Credit balance display
-
-### Media Library
-- Browse all generated content
-- Filter by type (audio/image)
-- Built-in media players
-- Date-sorted organization
-
-## 💾 Data Storage
-
-All data is stored in browser localStorage:
-- User accounts
-- Child profiles
-- Conversations and messages
-- Generated media (base64 encoded)
-- Credit balances
-
-**Note**: This is a frontend-only implementation. For production, you would need:
-- Backend API server
-- Database (PostgreSQL recommended)
-- File storage (S3 or similar)
-- Real AI API integration (OpenAI, Anthropic, etc.)
-
-## 🎯 Credit System
-
-- **Free Chat**: Unlimited basic conversations
-- **Music Generation**: 10 credits per song
-- **Story Generation**: 10 credits per story
-- **Starting Credits**: 100 credits for new users
-
-## 🎨 Customization
-
-Each child can customize:
-- Avatar emoji (🦊, 🐼, 🦄, 🐯, 🐸, 🦉)
-- Preferred language (English, Afrikaans, Zulu)
-- Age-appropriate responses
-
-## 🚀 Deployment
-
-### Build for Production
 ```bash
-npm run build
+cp .env.example .env
+chmod 600 .env
+nano .env
 ```
 
-### Deploy to Vercel/Netlify
-1. Connect your GitHub repository
-2. Set build command: `npm run build`
-3. Set output directory: `dist`
-4. Deploy!
+Required values:
 
-## 🔧 Development
+```env
+NODE_ENV=production
+DOMAIN=kiddo.example.com
+PUBLIC_ORIGIN=https://kiddo.example.com
+JWT_SECRET=<strong random value>
+POSTGRES_PASSWORD=<strong random value>
+DB_HOST=db
+DB_PORT=5432
+DB_NAME=kiddo
+DB_USER=kiddo
 
-### Available Scripts
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run typecheck` - Run TypeScript type checking
+AI_PROVIDER=genx
+GENX_API_KEY=<key>
+```
 
-### Tech Stack
-- **React 18** - UI framework
-- **TypeScript** - Type safety
-- **Vite** - Build tool
-- **Tailwind CSS** - Styling
-- **React Router** - Routing
-- **Framer Motion** - Animations
-- **Lucide React** - Icons
+Generate a JWT secret on the VPS:
 
-## 📝 Next Steps for Production
+```bash
+openssl rand -hex 64
+```
 
-To make this production-ready:
+Then use the guarded deployment script:
 
-1. **Backend API**
-   - Create Node.js/Express server
-   - Implement user authentication (JWT)
-   - Add database integration (PostgreSQL)
+```bash
+./deploy/deploy.sh
+```
 
-2. **AI Integration**
-   - Connect to OpenAI API for chat
-   - Integrate music generation API (e.g., AIVA, Amper)
-   - Add image generation API (e.g., DALL-E, Stable Diffusion)
+The script refuses example placeholders, validates Compose, builds the exact lockfile-controlled dependency tree, starts the stack, checks internal AI readiness, then checks HTTPS readiness.
 
-3. **File Storage**
-   - Set up S3 or similar for media storage
-   - Implement file upload/download
+## Health endpoints
 
-4. **Authentication**
-   - Add proper password hashing (bcrypt)
-   - Implement session management
-   - Add email verification
+- `/health` — process/database health
+- `/ready` — database + private media storage + a live valid configured AI key
 
-5. **Database Schema**
-   ```sql
-   CREATE TABLE users (
-     id UUID PRIMARY KEY,
-     email VARCHAR(255) UNIQUE NOT NULL,
-     password_hash VARCHAR(255) NOT NULL,
-     name VARCHAR(255) NOT NULL,
-     credits INTEGER DEFAULT 100,
-     created_at TIMESTAMP DEFAULT NOW()
-   );
+A deployment is not accepted until `/ready` returns HTTP 200.
 
-   CREATE TABLE children (
-     id UUID PRIMARY KEY,
-     user_id UUID REFERENCES users(id),
-     name VARCHAR(255) NOT NULL,
-     age INTEGER NOT NULL,
-     avatar_choice VARCHAR(10),
-     language VARCHAR(50),
-     created_at TIMESTAMP DEFAULT NOW()
-   );
+Manual public smoke test:
 
-   CREATE TABLE conversations (
-     id UUID PRIMARY KEY,
-     user_id UUID REFERENCES users(id),
-     child_id UUID REFERENCES children(id),
-     title VARCHAR(255),
-     type VARCHAR(50),
-     created_at TIMESTAMP DEFAULT NOW()
-   );
+```bash
+./deploy/smoke.sh
+```
 
-   CREATE TABLE messages (
-     id UUID PRIMARY KEY,
-     conversation_id UUID REFERENCES conversations(id),
-     role VARCHAR(50),
-     content TEXT,
-     emotion VARCHAR(50),
-     timestamp TIMESTAMP DEFAULT NOW()
-   );
+## Backups
 
-   CREATE TABLE media_items (
-     id UUID PRIMARY KEY,
-     user_id UUID REFERENCES users(id),
-     child_id UUID REFERENCES children(id),
-     conversation_id UUID REFERENCES conversations(id),
-     type VARCHAR(50),
-     title VARCHAR(255),
-     prompt TEXT,
-     file_url TEXT,
-     created_at TIMESTAMP DEFAULT NOW()
-   );
-   ```
+Create a database and private-media backup:
 
-## 📄 License
+```bash
+./deploy/backup.sh
+```
 
-MIT License - feel free to use this project for learning or commercial purposes.
+By default backups go into `./backups/`, which is Git-ignored. Copy production backups off the application VPS as part of operations.
 
-## 🤝 Contributing
+A destructive restore requires explicit confirmation:
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+```bash
+CONFIRM_RESTORE=YES ./deploy/restore.sh backups/kiddo-db-<timestamp>.sql.gz backups/kiddo-media-<timestamp>.tar.gz
+```
 
-## 🐛 Known Limitations
+Test restore on staging before client handover.
 
-- Data stored in localStorage (not persistent across devices)
-- No real AI integration (simulated responses)
-- Audio generation is basic (simple sine waves)
-- Image generation is basic (canvas shapes)
-- No user authentication security
-- No file upload to cloud storage
+## Required live acceptance
 
-## 📞 Support
+After entering a real GenX or OpenRouter key on the Webdock VPS:
 
-For questions or issues, please open an issue on GitHub.
+1. `/health` and `/ready` return 200 over HTTPS.
+2. Parent registers and consent is required.
+3. Parent creates at least two child profiles and can edit name, age, language and companion.
+4. Parent gate locks when entering child Chat.
+5. Wrong parent password is rejected; correct password unlocks controls.
+6. English, Afrikaans and Zulu profiles receive replies in their configured language.
+7. Saved conversations remain bound to the correct child in multi-child families.
+8. Normal chat returns a real AI response and emotion.
+9. Story mode persists the complete user/assistant exchange.
+10. Push-to-talk fills the composer on a supported browser.
+11. Read-aloud speaks a reply; parent voice-off hides/disables voice controls.
+12. Image generation produces a private image.
+13. Music generation produces playable audio.
+14. GenX async media finishes automatically without requiring the user to keep polling.
+15. Failed provider requests refund Kiddo credits and do not consume the daily parent message limit.
+16. The daily limit cannot be bypassed by concurrent requests.
+17. Generated media is available to the owning parent session and denied to logged-out/other-family sessions.
+18. Parent can disable image/music generation.
+19. Family data export works.
+20. Parent password change works.
+21. Full family account deletion removes database records and stored private media.
+22. App/database/media survive a normal container restart.
+23. Backup and restore are proven.
 
----
+## Release gate
 
-Built with ❤️ using React, TypeScript, and Tailwind CSS
+Do not call the product client-handover ready based only on `docker compose ps`.
+
+Required release evidence is:
+
+- exact Git commit SHA
+- green Kiddo CI on that exact SHA
+- Webdock `/ready` = 200 with the real configured provider
+- full live acceptance above
+- tested backup/restore
+- jurisdiction-specific child privacy/parental-consent review before broad public registration

@@ -1,0 +1,71 @@
+name: Kiddo CI
+on:
+  push:
+    branches: [main, fix/kiddo-production-recovery]
+  pull_request:
+    branches: [main]
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm audit --audit-level=high
+
+  server:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: kiddo_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d kiddo_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - run: find src test -name '*.js' -print0 | xargs -0 -n1 node --check
+      - run: npm test
+        env:
+          TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/kiddo_test
+      - run: npm audit --audit-level=high
+
+  webdock-build:
+    runs-on: ubuntu-latest
+    needs: [frontend, server]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate deployment shell scripts
+        run: sh -n deploy/deploy.sh deploy/backup.sh deploy/restore.sh deploy/smoke.sh
+      - name: Validate Docker Compose
+        run: |
+          cp .env.example .env
+          docker compose config >/dev/null
+      - name: Build production Docker image
+        run: docker build --pull -t amarktai-kiddo:ci .
+      - name: Verify PWA assets are present in image
+        run: |
+          docker run --rm --entrypoint sh amarktai-kiddo:ci -c             'test -f /app/dist/manifest.webmanifest && test -f /app/dist/sw.js && test -f /app/dist/index.html'
