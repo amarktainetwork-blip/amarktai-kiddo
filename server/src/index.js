@@ -25,7 +25,25 @@ await initDb();
 
 app.disable('x-powered-by');
 app.set('trust proxy',1);
-app.use(helmet({contentSecurityPolicy:false,crossOriginResourcePolicy:{policy:'same-site'}}));
+app.use(helmet({
+  contentSecurityPolicy:{
+    directives:{
+      defaultSrc:["'self'"],
+      scriptSrc:["'self'"],
+      styleSrc:["'self'","'unsafe-inline'"],
+      imgSrc:["'self'","data:","blob:"],
+      mediaSrc:["'self'","blob:"],
+      connectSrc:["'self'"],
+      fontSrc:["'self'","data:"],
+      workerSrc:["'self'","blob:"],
+      objectSrc:["'none'"],
+      baseUri:["'self'"],
+      formAction:["'self'"],
+      frameAncestors:["'none'"]
+    }
+  },
+  crossOriginResourcePolicy:{policy:'same-site'}
+}));
 app.use(express.json({limit:'1mb'}));
 app.use(cookieParser());
 
