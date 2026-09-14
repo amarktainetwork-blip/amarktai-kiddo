@@ -14,7 +14,7 @@ export default function Register(){
   const[busy,setBusy]=useState(false);
   const[error,setError]=useState('');
   const[parent,setParent]=useState({name:'',email:'',password:'',consent:false});
-  const[child,setChild]=useState({name:'',age:8,avatarChoice:'nova',language:'English',voiceGender:'female' as 'female'|'male',voiceId:'af_heart'});
+  const[child,setChild]=useState({name:'',age:8,avatarChoice:'nova',language:'English',voiceGender:'female' as 'female'|'male',voiceId:'en_US-hfc_female-medium'});
 
   const createParent=async(e:FormEvent)=>{
     e.preventDefault();
