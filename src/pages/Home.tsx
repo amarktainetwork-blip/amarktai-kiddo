@@ -1,35 +1,55 @@
 import { Link } from 'react-router-dom';
-import { Headphones, Heart, Image, MessageCircle, Mic2, Music2, ShieldCheck, Sparkles, Wand2 } from 'lucide-react';
+import { Headphones, Heart, Image, Mic2, Music2, ShieldCheck, Sparkles } from 'lucide-react';
 import CompanionAvatar from '../components/CompanionAvatar';
 import MarketingShell from '../components/MarketingShell';
+import type { Emotion } from '../lib/types';
+
+const emotions:Emotion[]=['happy','excited','curious','thinking','proud','calm','sad','worried','surprised','playful','sleepy','idle'];
 
 export default function Home(){
   return <MarketingShell>
-    <section className="marketing-hero">
+    <section className="marketing-hero bright-hero">
       <div className="hero-copy">
-        <span className="eyebrow"><ShieldCheck size={16}/>Parent-controlled by design</span>
-        <h1>A friendly AI companion they can <em>talk to.</em></h1>
-        <p>Kiddo listens, speaks back, remembers safe conversation context, tells stories, creates pictures and makes music — while parents control profiles, limits and creative permissions.</p>
-        <div className="hero-actions"><Link className="btn primary big" to="/register">Create parent account</Link><Link className="btn ghost big" to="/login">Parent login</Link></div>
-        <div className="voice-proof"><span><Mic2/>Talk naturally</span><span><Headphones/>Spoken replies</span><span><Heart/>Emotion-aware companion</span></div>
+        <span className="eyebrow"><Heart size={16}/>A buddy they can actually talk to</span>
+        <h1>Meet Kiddo.<br/><em>Talk, imagine, create.</em></h1>
+        <p>Kiddo is a voice-first AI buddy for children. They talk naturally, Kiddo talks back, remembers the things they create together, and can make stories, cartoon pictures and original music.</p>
+        <div className="hero-actions"><Link className="btn primary big" to="/register">Create a family account</Link><Link className="btn ghost big" to="/how-it-works">See how it works</Link></div>
+        <div className="voice-proof"><span><Mic2/>Just talk</span><span><Headphones/>Spoken replies</span><span><Sparkles/>Creates automatically</span><span><ShieldCheck/>Parent managed</span></div>
       </div>
-      <div className="hero-demo">
-        <CompanionAvatar emotion="excited" name="Nova" variant="nova" speaking/>
-        <div className="demo-wave"><i/><i/><i/><i/><i/><span>“Tell me about space!”</span></div>
-        <div className="demo-reply">“Absolutely! Let’s blast off together 🚀”</div>
+      <div className="hero-demo playful-demo">
+        <CompanionAvatar emotion="excited" name="Kiddo" variant="nova" speaking showLabel={false}/>
+        <div className="kid-quote">“Can we make a song about a moon dragon?”</div>
+        <div className="buddy-quote">“Yes! Should it feel magical or super adventurous?”</div>
       </div>
     </section>
-    <section className="marketing-strip"><span>Voice-first</span><span>English · Afrikaans · Zulu</span><span>Private family media</span><span>Parent-controlled memory</span></section>
-    <section id="how" className="marketing-section">
-      <div className="section-intro"><span className="eyebrow">How it works</span><h2>One tap starts the conversation.</h2><p>No typing required. Kiddo listens, thinks, speaks and then listens again so the conversation can continue naturally.</p></div>
-      <div className="how-grid"><article><Mic2/><b>1. Talk</b><p>The child taps Talk once and speaks naturally.</p></article><article><Sparkles/><b>2. Kiddo understands</b><p>Age-aware AI uses the child’s language and recent safe context.</p></article><article><MessageCircle/><b>3. Kiddo speaks</b><p>The companion answers aloud and changes emotion as it responds.</p></article><article><Wand2/><b>4. Create together</b><p>Ask for a story, picture or song with the same voice experience.</p></article></div>
+
+    <section className="marketing-strip bright-strip">
+      <span>Voice-first</span><span>Streaming conversation</span><span>Stories</span><span>Cartoon pictures</span><span>60–120 sec music</span><span>Saved family library</span>
     </section>
-    <section className="marketing-section showcase">
-      <div className="section-intro"><span className="eyebrow">Creative adventures</span><h2>More than chat.</h2></div>
-      <div className="showcase-grid"><article><MessageCircle/><h3>Conversation</h3><p>Ongoing voice conversations with persistent child-specific context.</p></article><article><Wand2/><h3>Stories</h3><p>Original age-appropriate adventures spoken aloud by the companion.</p></article><article><Image/><h3>Pictures</h3><p>Voice-requested illustrations saved privately to the family library.</p></article><article><Music2/><h3>Music</h3><p>Create child-safe music from a spoken idea and play it from the library.</p></article></div>
+
+    <section className="marketing-section home-intro">
+      <div className="section-intro"><span className="eyebrow">No menus for kids</span><h2>They say what they want. Kiddo works out what to do.</h2><p>“Tell me a bedtime story.” “Draw our dragon.” “Make a song about it.” “Play our song again.” Kiddo routes each request automatically, and saved things are replayed without generating them again.</p></div>
+      <div className="home-pillars">
+        <article><Mic2/><h3>Talk</h3><p>Local speech recognition and neural voice reduce delay and speech costs.</p></article>
+        <article><Image/><h3>Create</h3><p>New stories, pictures and music are created only when the child asks for something new.</p></article>
+        <article><Heart/><h3>Remember</h3><p>Stories, songs and pictures stay in the child’s library so Kiddo can bring them back later.</p></article>
+      </div>
     </section>
-    <section id="parents" className="marketing-section parent-marketing"><div><span className="eyebrow">For parents</span><h2>You stay in control.</h2><p>Parent-only controls manage child profiles, daily limits, memory, voice, media creation, credits, data export and account deletion.</p></div><div className="parent-checks"><span>✓ Parent consent and gate</span><span>✓ Per-child profile and language</span><span>✓ Voice and media permissions</span><span>✓ Daily message limits</span><span>✓ Private generated media</span><span>✓ Export and deletion controls</span></div></section>
-    <section id="safety" className="marketing-section safety-marketing"><ShieldCheck/><div><span className="eyebrow">Child safety</span><h2>Warm, creative and age-aware.</h2><p>Kiddo has server-side safety rules for explicit content, self-harm, violence, weapons, drugs, dangerous activity, personal data and secret-keeping. It encourages a trusted grown-up when real-world help is needed.</p></div></section>
-    <section className="marketing-cta"><CompanionAvatar size="md" emotion="happy" variant="lumi"/><div><h2>Ready to meet Kiddo?</h2><p>Parents create the account first, then set up the child’s companion.</p></div><Link className="btn primary big" to="/register">Get started</Link></section>
+
+    <section className="marketing-section emotion-section">
+      <div className="section-intro"><span className="eyebrow">A buddy with feelings</span><h2>Kiddo changes expression as the conversation changes.</h2><p>Listening, thinking, excitement, calm bedtime moments and worried safety moments should all look different — not just show a label.</p></div>
+      <div className="emotion-grid">{emotions.map((emotion,i)=><div key={emotion}><CompanionAvatar size="sm" emotion={emotion} variant={['nova','sprout','comet','bubbles','pixel','lumi'][i%6]} name={emotion} showLabel={false}/><b>{emotion}</b></div>)}</div>
+    </section>
+
+    <section className="marketing-section home-parent-card">
+      <div><span className="eyebrow">Parents stay in control</span><h2>Kid-friendly on the outside. Parent-controlled underneath.</h2><p>Parents choose the child’s language and voice, set daily limits, manage memory and creative permissions, see safety alerts and control family data.</p><Link className="btn ghost" to="/for-parents">See Parent Controls</Link></div>
+      <CompanionAvatar size="md" emotion="proud" variant="sprout" name="Kiddo" showLabel={false}/>
+    </section>
+
+    <section className="marketing-cta bright-cta">
+      <CompanionAvatar size="md" emotion="happy" variant="lumi" showLabel={false}/>
+      <div><h2>Ready to meet a new buddy?</h2><p>A parent creates the family account first, then chooses the child’s buddy, language and voice.</p></div>
+      <Link className="btn primary big" to="/register">Meet Kiddo</Link>
+    </section>
   </MarketingShell>;
 }
