@@ -56,6 +56,7 @@ export default function Chat(){
   const[error,setError]=useState('');
   const[creation,setCreation]=useState<{id:string;type:'image'|'audio';status:string}|null>(null);
   const[displayImage,setDisplayImage]=useState<string>('');
+  const[galleryImages,setGalleryImages]=useState<Array<{id:string;title:string}>>([]);
   const[playingMusic,setPlayingMusic]=useState(false);
 
   useEffect(()=>{busyRef.current=thinking},[thinking]);
@@ -79,6 +80,9 @@ export default function Chat(){
 
   const child:Child|undefined=useMemo(()=>data?.children.find(c=>c.id===childId),[data,childId]);
   const voiceAllowed=data?.childSettings?.voice_enabled!==false;
+  useEffect(()=>{
+    if(child?.language==='English')void prewarmLocalVoice(child.voice_id||voiceForGender(child.voice_gender));
+  },[child?.id,child?.language,child?.voice_id,child?.voice_gender]);
 
   function stopEverything(){
     voiceSessionRef.current=false;
@@ -157,8 +161,15 @@ export default function Chat(){
   const handleSavedAction=useCallback(async(action:SavedAction)=>{
     if(!action)return;
     if(action.kind==='show_image'){
+      setGalleryImages([]);
       setDisplayImage('/api/media/'+action.id+'/file?v='+Date.now());
       setEmotion('proud');setStatus(action.title);
+      return;
+    }
+    if(action.kind==='show_gallery'){
+      setDisplayImage('');
+      setGalleryImages(action.items);
+      setEmotion('proud');setStatus('Here are your saved pictures');
       return;
     }
     if(action.kind==='play_audio'){
@@ -291,7 +302,9 @@ export default function Chat(){
     let streamError='';
 
     await api.streamChat({childId,conversationId,message:value},event=>{
-      if(event.type==='sentence'){
+      if(event.type==='ready'){
+        setStatus('Kiddo heard you…');
+      }else if(event.type==='sentence'){
         setThinking(false);busyRef.current=false;
         fullReply+=(fullReply?' ':'')+event.text;
         setLiveReply(fullReply);setEmotion(event.emotion||'idle');
@@ -322,7 +335,7 @@ export default function Chat(){
   const handleTranscriptRef=useRef<(value:string)=>Promise<void>>(async()=>{});
   const handleTranscript=useCallback(async(value:string)=>{
     if(!childId)return;
-    setError('');setLiveReply('');setDisplayImage('');
+    setError('');setLiveReply('');
     try{
       if(creativeRequest(value))await handleOrchestratedTurn(value);
       else await handleStreamingTurn(value);
@@ -352,15 +365,17 @@ export default function Chat(){
 
   return <AppShell><div className="buddy-page">
     <div className="buddy-top">
-      <select value={childId} onChange={e=>{stopVoice();setChildId(e.target.value);setConversationId(undefined);setMessages([]);setDisplayImage('')}}>{data.children.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
+      <select value={childId} onChange={e=>{stopVoice();setChildId(e.target.value);setConversationId(undefined);setMessages([]);setDisplayImage('');setGalleryImages([])}}>{data.children.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
       <span className="credit-pill"><Sparkles size={15}/>{data.user.credits}</span>
     </div>
 
     <section className="buddy-stage">
       <div className="buddy-visual">
-        {displayImage
-          ? <div className="creation-display"><img src={displayImage} alt="Kiddo creation"/><button onClick={()=>setDisplayImage('')}>Back to my buddy</button></div>
-          : <CompanionAvatar emotion={listening?'curious':thinking?'thinking':emotion} name="Kiddo" variant={child?.avatar_choice} listening={listening} speaking={speaking||playingMusic}/>}
+        {galleryImages.length
+          ? <div className="creation-gallery"><div className="creation-gallery-grid">{galleryImages.map(item=><button key={item.id} onClick={()=>{setGalleryImages([]);setDisplayImage('/api/media/'+item.id+'/file?v='+Date.now());setStatus(item.title)}}><img src={'/api/media/'+item.id+'/file'} alt={item.title}/><span>{item.title}</span></button>)}</div><button className="gallery-back" onClick={()=>setGalleryImages([])}>Back to my buddy</button></div>
+          : displayImage
+            ? <div className="creation-display"><img src={displayImage} alt="Kiddo creation"/><button onClick={()=>setDisplayImage('')}>Back to my buddy</button></div>
+            : <CompanionAvatar emotion={listening?'curious':thinking?'thinking':emotion} name="Kiddo" variant={child?.avatar_choice} listening={listening} speaking={speaking||playingMusic}/>}
       </div>
       <div className="buddy-status">
         <b>{status}</b>
