@@ -96,7 +96,7 @@ export async function submitGenxMedia(type,prompt,metadata={}){
     type==='audio'?config.genx.musicModel:config.genx.imageModel
   );
   if(!model)throw new Error(`No GenX ${category} model is currently available.`);
-  const params=type==='audio'?{prompt,duration:30}:{prompt};
+  const params=type==='audio'?{prompt}:{prompt};
   const response=await fetch(`${config.genx.baseUrl}/api/v1/generate`,{
     method:'POST',
     signal:timeoutSignal(config.timeouts.media),
@@ -129,6 +129,74 @@ export async function downloadGenxJobFile(jobId){
     buffer:Buffer.from(await response.arrayBuffer()),
     mimeType:response.headers.get('content-type')||'application/octet-stream'
   };
+}
+
+export async function waitForGenxJob(jobId,{timeoutMs=config.timeouts.media,pollMs=650}={}){
+  const deadline=Date.now()+timeoutMs;
+  while(Date.now()<deadline){
+    const job=await getGenxJob(jobId);
+    const status=String(job.status||'').toLowerCase();
+    if(['completed','succeeded','success','ready'].includes(status))return job;
+    if(['failed','error','cancelled','canceled'].includes(status)){
+      throw new Error(String(job.error||job.message||'GenX generation failed.'));
+    }
+    await new Promise(resolve=>setTimeout(resolve,pollMs));
+  }
+  throw new Error('GenX generation timed out.');
+}
+
+async function submitGenxJob(model,params,metadata={}){
+  if(!config.genx.key)throw new Error('GENX_API_KEY is not configured.');
+  const response=await fetch(`${config.genx.baseUrl}/api/v1/generate`,{
+    method:'POST',
+    signal:timeoutSignal(config.timeouts.media),
+    headers:{Authorization:`Bearer ${config.genx.key}`,'Content-Type':'application/json'},
+    body:JSON.stringify({model,params,metadata})
+  });
+  if(!response.ok)throw new Error(await errorMessage(response,'GenX generation'));
+  const payload=await response.json().catch(()=>({}));
+  const jobId=payload.job_id||payload.id;
+  if(!jobId)throw new Error('GenX did not return a job ID.');
+  return String(jobId);
+}
+
+export async function generateGenxSpeech(text,{voiceId=config.genx.defaultVoice,language='en'}={}){
+  const jobId=await submitGenxJob(config.genx.ttsModel,{
+    text:String(text||'').slice(0,7000),
+    voice_id:voiceId,
+    language,
+    codec:'mp3',
+    sample_rate:24000,
+    bit_rate:128000
+  });
+  await waitForGenxJob(jobId,{timeoutMs:60000,pollMs:500});
+  const file=await downloadGenxJobFile(jobId);
+  return{...file,provider:'genx',model:config.genx.ttsModel,voiceId};
+}
+
+export async function transcribeGenxAudioUrl(audioUrl){
+  const jobId=await submitGenxJob(config.genx.transcriptionModel,{
+    audio_url:audioUrl,
+    include_timestamps:false
+  });
+  const job=await waitForGenxJob(jobId,{timeoutMs:60000,pollMs:600});
+  const direct=job.text||job.transcript||job.output?.text||job.result?.text||job.output||job.result;
+  if(typeof direct==='string'&&direct.trim())return direct.trim();
+  if(job.result_url){
+    const response=await fetch(job.result_url,{signal:timeoutSignal(20000)});
+    if(response.ok){
+      const contentType=response.headers.get('content-type')||'';
+      if(contentType.includes('json')){
+        const payload=await response.json().catch(()=>({}));
+        const text=payload.text||payload.transcript||payload.output?.text||payload.result?.text||payload.output||payload.result;
+        if(typeof text==='string'&&text.trim())return text.trim();
+      }else{
+        const text=(await response.text()).trim();
+        if(text)return text;
+      }
+    }
+  }
+  throw new Error('GenX transcription completed without transcript text.');
 }
 
 function openRouterHeaders(){

@@ -17,9 +17,20 @@ export const api={
   exportData:()=>request<Record<string,unknown>>('/api/auth/export'),changePassword:(currentPassword:string,newPassword:string)=>request<{changed:boolean}>('/api/auth/change-password',{method:'POST',body:JSON.stringify({currentPassword,newPassword})}),deleteAccount:(password:string)=>request<void>('/api/auth/account',{method:'DELETE',body:JSON.stringify({password})}),
   createChild:(input:{name:string;age:number;avatarChoice:string;language:string})=>request<{child:Child}>('/api/children',{method:'POST',body:JSON.stringify(input)}),
   updateChild:(id:string,input:Partial<{name:string;age:number;avatarChoice:string;language:string}>)=>request<{child:Child}>(`/api/children/${id}`,{method:'PATCH',body:JSON.stringify(input)}),deleteChild:(id:string)=>request<void>(`/api/children/${id}`,{method:'DELETE'}),
-  settings:(input:Partial<{dailyMessageLimit:number;mediaEnabled:boolean;memoryEnabled:boolean;voiceEnabled:boolean;voiceAutoplay:boolean}>)=>request<{settings:Settings}>('/api/settings',{method:'PATCH',body:JSON.stringify(input)}),
+  settings:(input:Partial<{dailyMessageLimit:number;mediaEnabled:boolean;memoryEnabled:boolean;voiceEnabled:boolean;voiceAutoplay:boolean;safetyAlertsEnabled:boolean}>)=>request<{settings:Settings}>('/api/settings',{method:'PATCH',body:JSON.stringify(input)}),
   conversations:()=>request<{conversations:Conversation[]}>('/api/conversations'),conversation:(id:string)=>request<{conversation:Conversation;messages:Message[]}>(`/api/conversations/${id}`),
-  chat:(input:{childId:string;conversationId?:string;message:string;mode:'chat'|'story'})=>request<{conversationId:string;reply:string;emotion:any;credits:number;provider:string}>('/api/chat',{method:'POST',body:JSON.stringify(input)}),
+  chat:(input:{childId:string;conversationId?:string;message:string;mode:'chat'|'story'})=>request<{conversationId:string;reply:string;emotion:any;intent:'chat'|'story'|'image'|'music'|'safety';action:'none'|'generate_image'|'generate_music';segments:Array<{text:string;emotion:any}>;creation:{id:string;status:string;type:'image'|'audio'}|null;creationError?:string|null;credits:number;provider:string}>('/api/chat',{method:'POST',body:JSON.stringify(input)}),
   media:()=>request<{media:MediaItem[]}>('/api/media'),generateMedia:(input:{childId:string;prompt:string;type:'image'|'audio'})=>request<{media:{id:string;status:string;type:string};credits?:number;provider:string}>('/api/media/generate',{method:'POST',body:JSON.stringify(input)}),
-  mediaStatus:(id:string)=>request<{media:{id:string;status:string;type:string;error?:string}}>(`/api/media/${id}/status`),deleteMedia:(id:string)=>request<void>(`/api/media/${id}`,{method:'DELETE'})
+  mediaStatus:(id:string)=>request<{media:{id:string;status:string;type:string;error?:string}}>(`/api/media/${id}/status`),deleteMedia:(id:string)=>request<void>(`/api/media/${id}`,{method:'DELETE'}),
+  transcribeVoice:async(blob:Blob)=>{
+    const response=await fetch('/api/voice/transcribe',{method:'POST',credentials:'include',headers:{'Content-Type':blob.type||'audio/webm'},body:blob});
+    const body=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(body?.error||`Voice transcription failed (${response.status})`);
+    return body as {transcript:string};
+  },
+  speakVoice:async(input:{text:string;language:string;voiceId?:string})=>{
+    const response=await fetch('/api/voice/speak',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});
+    if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(body?.error||`Voice generation failed (${response.status})`)}
+    return response.blob();
+  }
 };

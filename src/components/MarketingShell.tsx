@@ -19,7 +19,7 @@ export default function MarketingShell({children}:{children:ReactNode}) {
       <div><Link className="brand" to="/"><span className="brand-orb"><Sparkles size={16}/></span><span>Amarktai <b>Kiddo</b></span></Link><p>A parent-controlled, voice-first creative AI companion for children.</p></div>
       <div><b>Product</b><a href="/#how">How it works</a><a href="/#parents">Parent controls</a><a href="/#safety">Safety</a></div>
       <div><b>Legal</b><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link><Link to="/contact">Contact</Link></div>
-      <div className="footer-trust"><ShieldCheck/>Built for parent-supervised use</div>
+      <div className="footer-trust"><ShieldCheck/><span>Built for parent-supervised use<br/>© 2026 Amarktai Kiddo · Part of the Amarktai Network</span></div>
     </footer>
   </div>;
 }

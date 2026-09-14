@@ -15,6 +15,7 @@ import { settingsRouter } from './routes/settings.js';
 import { conversationsRouter } from './routes/conversations.js';
 import { chatRouter } from './routes/chat.js';
 import { mediaRouter } from './routes/media.js';
+import { voiceRouter } from './routes/voice.js';
 import { startMediaReconciler } from './media-reconciler.js';
 
 const app=express();
@@ -87,6 +88,7 @@ app.use('/api/settings',settingsRouter);
 app.use('/api/conversations',conversationsRouter);
 app.use('/api/chat',aiLimiter,chatRouter);
 app.use('/api/media',aiLimiter,mediaRouter);
+app.use('/api/voice',aiLimiter,voiceRouter);
 
 app.use(express.static(dist,{index:false,maxAge:config.nodeEnv==='production'?'1h':0}));
 app.get('*',(req,res,next)=>{

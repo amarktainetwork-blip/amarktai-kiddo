@@ -34,8 +34,11 @@ export const config = {
     key: process.env.GENX_API_KEY?.trim() || '',
     baseUrl: (process.env.GENX_BASE_URL || 'https://query.genx.sh').replace(/\/$/, ''),
     chatModel: process.env.GENX_CHAT_MODEL || 'gpt-5.6-luna',
-    imageModel: process.env.GENX_IMAGE_MODEL || '',
-    musicModel: process.env.GENX_MUSIC_MODEL || ''
+    imageModel: process.env.GENX_IMAGE_MODEL || 'genxlm-pro-v1-img-fast',
+    musicModel: process.env.GENX_MUSIC_MODEL || 'lyria-3-clip-preview',
+    ttsModel: process.env.GENX_TTS_MODEL || 'grok-tts',
+    transcriptionModel: process.env.GENX_TRANSCRIPTION_MODEL || 'genxlm-pro-v1-tr',
+    defaultVoice: process.env.GENX_DEFAULT_VOICE || 'aurora'
   },
   openrouter: {
     key: process.env.OPENROUTER_API_KEY?.trim() || '',
@@ -50,6 +53,14 @@ export const config = {
     story: Number(process.env.STORY_CREDIT_COST || 3),
     image: Number(process.env.IMAGE_CREDIT_COST || 10),
     music: Number(process.env.MUSIC_CREDIT_COST || 15)
+  },
+  smtp: {
+    host: process.env.SMTP_HOST?.trim() || '',
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: String(process.env.SMTP_SECURE || 'false').toLowerCase() === 'true',
+    user: process.env.SMTP_USER?.trim() || '',
+    pass: process.env.SMTP_PASS || '',
+    from: process.env.SMTP_FROM?.trim() || 'Amarktai Kiddo <no-reply@amarktai.co.za>'
   },
   defaultDailyMessageLimit: Number(process.env.DEFAULT_DAILY_MESSAGE_LIMIT || 80),
   mediaReconcileIntervalMs: Number(process.env.MEDIA_RECONCILE_INTERVAL_MS || 15000)

@@ -18,7 +18,8 @@ settingsRouter.patch('/',async(req,res,next)=>{
       mediaEnabled:z.boolean().optional(),
       memoryEnabled:z.boolean().optional(),
       voiceEnabled:z.boolean().optional(),
-      voiceAutoplay:z.boolean().optional()
+      voiceAutoplay:z.boolean().optional(),
+      safetyAlertsEnabled:z.boolean().optional()
     }).parse(req.body);
 
     const c=await ensureSettings(req.user.id);
@@ -29,8 +30,9 @@ settingsRouter.patch('/',async(req,res,next)=>{
            memory_enabled=$3,
            voice_enabled=$4,
            voice_autoplay=$5,
+           safety_alerts_enabled=$6,
            updated_at=NOW()
-       WHERE user_id=$6
+       WHERE user_id=$7
        RETURNING *`,
       [
         i.dailyMessageLimit??c.daily_message_limit,
@@ -38,6 +40,7 @@ settingsRouter.patch('/',async(req,res,next)=>{
         i.memoryEnabled??c.memory_enabled,
         i.voiceEnabled??c.voice_enabled,
         i.voiceAutoplay??c.voice_autoplay,
+        i.safetyAlertsEnabled??c.safety_alerts_enabled,
         req.user.id
       ]
     );

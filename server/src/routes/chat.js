@@ -4,8 +4,10 @@ import { z } from 'zod';
 import { config } from '../config.js';
 import { pool, withTransaction } from '../db.js';
 import { assertChildOwner, requireUser } from '../auth.js';
-import { childSystemPrompt, normalizeAiReply, precheckChildMessage, postcheckChildReply } from '../safety.js';
+import { childSystemPrompt, detectSafetyConcern, normalizeAiReply, precheckChildMessage, postcheckChildReply } from '../safety.js';
 import { generateText } from '../providers.js';
+import { sendParentSafetyAlert, smtpConfigured } from '../mailer.js';
+import { queueMediaGeneration } from '../media-service.js';
 import { deductCredits, ensureSettings, refundCredits, releaseDailyMessage, reserveDailyMessage } from '../services.js';
 
 export const chatRouter=Router();
@@ -29,10 +31,32 @@ chatRouter.post('/',async(req,res,next)=>{
     const child=await assertChildOwner(req.user.id,i.childId);
     if(!child)return res.status(404).json({error:'Child profile not found.'});
 
-    const safe=precheckChildMessage(i.message);
-    if(!safe.allowed)return res.status(400).json({error:safe.reason,safeBlocked:true});
-
     const settings=await ensureSettings(req.user.id);
+    const concern=detectSafetyConcern(i.message);
+    if(concern){
+      const alertId=randomUUID();
+      await pool.query(
+        `INSERT INTO safety_alerts (id,user_id,child_id,category,severity,message_excerpt)
+         VALUES ($1,$2,$3,$4,$5,$6)`,
+        [alertId,req.user.id,child.id,concern.category,concern.severity,concern.excerpt]
+      );
+      if(settings.safety_alerts_enabled&&smtpConfigured()){
+        sendParentSafetyAlert({
+          to:req.user.email,
+          parentName:req.user.name,
+          childName:child.name,
+          category:concern.category,
+          severity:concern.severity,
+          excerpt:concern.excerpt
+        }).then(async sent=>{
+          if(sent)await pool.query('UPDATE safety_alerts SET emailed_at=NOW() WHERE id=$1',[alertId]);
+        }).catch(error=>console.error('Safety alert email failed',error));
+      }
+    }
+
+    const safe=precheckChildMessage(i.message);
+    if(!safe.allowed)return res.status(400).json({error:safe.reason,safeBlocked:true,alertStored:Boolean(concern)});
+
     cost=i.mode==='story'?config.credits.story:config.credits.chat;
     reason=i.mode==='story'?'Story generation':'Kiddo chat';
 
@@ -104,11 +128,39 @@ chatRouter.post('/',async(req,res,next)=>{
         );
       });
 
+      let creation=null;
+      let creationError=null;
+      let finalCredits=credits;
+      if(reply.action!=='none'&&reply.creationPrompt){
+        if(!settings.media_enabled){
+          creationError='Pictures and music are disabled in Parent Controls.';
+        }else{
+          const type=reply.action==='generate_music'?'audio':'image';
+          try{
+            creation=await queueMediaGeneration({
+              userId:req.user.id,
+              child,
+              type,
+              prompt:reply.creationPrompt,
+              title:reply.creationTitle||undefined
+            });
+            finalCredits=creation.credits;
+          }catch(error){
+            creationError=String(error?.message||'Creative generation could not start.');
+          }
+        }
+      }
+
       return res.json({
         conversationId,
         reply:reply.reply,
         emotion:reply.emotion,
-        credits,
+        intent:reply.intent,
+        action:reply.action,
+        segments:reply.segments,
+        creation:creation?.media||null,
+        creationError,
+        credits:finalCredits,
         provider:generated.provider
       });
     }catch(error){
