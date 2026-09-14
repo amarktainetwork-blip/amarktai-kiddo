@@ -1,2 +1,42 @@
-import { useEffect,useState } from 'react';import { useNavigate } from 'react-router-dom';import { Image,MessageCircle,Music2,Sparkles,BookOpen,Mic } from 'lucide-react';import AppShell from '../components/AppShell';import CompanionAvatar from '../components/CompanionAvatar';import { api } from '../lib/api';import type { Capabilities,Conversation,MediaItem,SessionData } from '../lib/types';
-export default function Dashboard(){const n=useNavigate(),[data,setData]=useState<SessionData|null>(null),[caps,setCaps]=useState<Capabilities|null>(null),[convs,setConvs]=useState<Conversation[]>([]),[media,setMedia]=useState<MediaItem[]>([]),[error,setError]=useState('');useEffect(()=>{Promise.all([api.me(),api.status(),api.conversations(),api.media()]).then(([me,s,c,m])=>{setData(me);setCaps(s.capabilities);setConvs(c.conversations);setMedia(m.media)}).catch(e=>{if(/sign in|session/i.test(e.message))n('/login');else setError(e.message)})},[]);if(!data)return <AppShell><div className="loading">{error||'Loading your family space…'}</div></AppShell>;const child=data.children[0];return <AppShell><div className="page"><div className="page-head"><div><span className="eyebrow">Family dashboard</span><h1>Hi, {data.user.name}.</h1><p>{child?`${child.name}'s creative space is ready.`:'Add a child profile to get started.'}</p></div><div className="credit-pill"><Sparkles size={18}/><b>{data.user.credits}</b><span>credits</span></div></div><div className="dashboard-grid"><section className="companion-card"><CompanionAvatar emotion="happy" name={child?.name?`${child.name}'s Kiddo`:'Kiddo'} variant={child?.avatar_choice}/><div><h2>{child?`Ready for ${child.name}`:'Almost ready'}</h2><p>{child?'Chat, tell a story, draw something new or make music.':'Create a child profile from Parent Controls.'}</p><button className="btn primary" onClick={()=>n(child?'/chat':'/parent')}>{child?'Start creating':'Add child'}</button></div></section><section className="status-card"><h3>AI connection</h3><div className={`status-line ${caps?.configured?'ok':'warn'}`}><span/>{caps?.configured?'AI ready':'No API key configured'}</div><ul><li><MessageCircle/>Chat <b>{caps?.chat?'Ready':'Off'}</b></li><li><BookOpen/>Stories <b>{caps?.story?'Ready':'Off'}</b></li><li><Image/>Pictures <b>{caps?.image?'Ready':'Off'}</b></li><li><Music2/>Music <b>{caps?.music?'Ready':'Off'}</b></li><li><Mic/>Voice <b>{caps?.voice?'Ready':'Off'}</b></li></ul></section></div><section><div className="section-head"><h2>Children</h2><button className="text-btn" onClick={()=>n('/parent')}>Manage</button></div><div className="child-row">{data.children.map(c=><div className="child-card" key={c.id}><CompanionAvatar size="sm" emotion="happy" name={c.name} variant={c.avatar_choice}/><div><b>{c.name}</b><span>Age {c.age} · {c.language}</span></div></div>)}</div></section><section><div className="section-head"><h2>Recent adventures</h2><button className="text-btn" onClick={()=>n('/chat')}>Open chat</button></div>{convs.length?<div className="activity-list">{convs.slice(0,5).map(c=><button key={c.id} onClick={()=>n(`/chat?conversation=${c.id}`)}><span>{c.mode==='story'?'📚':'💬'}</span><div><b>{c.title}</b><small>{c.child_name} · {new Date(c.updated_at).toLocaleDateString()}</small></div></button>)}</div>:<div className="empty">No conversations yet. Start the first one together.</div>}</section><section><div className="section-head"><h2>Latest creations</h2><button className="text-btn" onClick={()=>n('/library')}>View library</button></div><div className="media-strip">{media.slice(0,4).map(m=><div key={m.id} className="media-tile"><span>{m.type==='image'?'🎨':'🎵'}</span><b>{m.title}</b><small>{m.status}</small></div>)}{!media.length&&<div className="empty">Generated pictures and music will appear here.</div>}</div></section></div></AppShell>}
+import { useEffect,useMemo,useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { BookOpen, Image, MessageCircle, Mic2, Music2, ShieldCheck, Sparkles } from 'lucide-react';
+import AppShell from '../components/AppShell';
+import CompanionAvatar from '../components/CompanionAvatar';
+import { api } from '../lib/api';
+import type { Conversation,MediaItem,SessionData } from '../lib/types';
+
+export default function Dashboard(){
+  const n=useNavigate();
+  const[data,setData]=useState<SessionData|null>(null);
+  const[convs,setConvs]=useState<Conversation[]>([]);
+  const[media,setMedia]=useState<MediaItem[]>([]);
+  const[selected,setSelected]=useState('');
+  const[error,setError]=useState('');
+  useEffect(()=>{Promise.all([api.me(),api.conversations(),api.media()]).then(([me,c,m])=>{setData(me);setConvs(c.conversations);setMedia(m.media);setSelected(me.children[0]?.id||'')}).catch(e=>{if(/sign in|session/i.test(e.message))n('/login');else setError(e.message)})},[]);
+  const child=useMemo(()=>data?.children.find(c=>c.id===selected)||data?.children[0],[data,selected]);
+  if(!data)return <AppShell><div className="loading">{error||'Loading your family space…'}</div></AppShell>;
+  const open=(mode:string)=>n('/chat?mode='+mode+(child?'&child='+child.id:''));
+
+  return <AppShell><div className="dashboard-page">
+    <section className="dashboard-hero">
+      <div className="dashboard-copy"><span className="eyebrow">Family home</span><h1>{child?'Ready for '+child.name+'?':'Meet your Kiddo companion'}</h1><p>{child?'Tap Talk and the companion will listen, answer out loud and keep the conversation going.':'Create a child profile in Parent Controls to begin.'}</p>
+        <div className="dashboard-primary"><button className="talk-now" onClick={()=>child?open('talk'):n('/parent')}><Mic2/> {child?'Start talking':'Add child profile'}</button><button className="btn ghost" onClick={()=>n('/parent')}><ShieldCheck/>Parent controls</button></div>
+        {data.children.length>1&&<div className="child-switch">{data.children.map(c=><button key={c.id} className={selected===c.id?'active':''} onClick={()=>setSelected(c.id)}>{c.name}</button>)}</div>}
+      </div>
+      <div className="dashboard-companion"><CompanionAvatar emotion="happy" variant={child?.avatar_choice} name={child?.name?child.name+"'s Kiddo":'Kiddo'}/><div className="credit-pill"><Sparkles size={16}/><b>{data.user.credits}</b> credits</div></div>
+    </section>
+
+    <section className="action-grid">
+      <button onClick={()=>open('talk')} disabled={!child}><MessageCircle/><span><b>Talk</b><small>Hands-free conversation</small></span></button>
+      <button onClick={()=>open('story')} disabled={!child}><BookOpen/><span><b>Story</b><small>Tell it with voice</small></span></button>
+      <button onClick={()=>open('image')} disabled={!child}><Image/><span><b>Picture</b><small>Describe it out loud</small></span></button>
+      <button onClick={()=>open('music')} disabled={!child}><Music2/><span><b>Music</b><small>Say what to create</small></span></button>
+    </section>
+
+    <div className="dashboard-columns">
+      <section className="dashboard-panel"><div className="section-head"><h2>Recent conversations</h2><button onClick={()=>open('talk')}>Talk now</button></div>{convs.length?<div className="activity-list">{convs.slice(0,6).map(c=><button key={c.id} onClick={()=>n('/chat?conversation='+c.id)}><span>{c.mode==='story'?'📚':'💬'}</span><div><b>{c.title}</b><small>{c.child_name} · {new Date(c.updated_at).toLocaleDateString()}</small></div></button>)}</div>:<div className="empty">The first conversation will appear here.</div>}</section>
+      <section className="dashboard-panel"><div className="section-head"><h2>Latest creations</h2><button onClick={()=>n('/library')}>Library</button></div>{media.length?<div className="dashboard-media">{media.slice(0,6).map(m=><div key={m.id}><span>{m.type==='image'?'🎨':'🎵'}</span><b>{m.title}</b><small>{m.status}</small></div>)}</div>:<div className="empty">Pictures and music will appear here.</div>}</section>
+    </div>
+  </div></AppShell>;
+}

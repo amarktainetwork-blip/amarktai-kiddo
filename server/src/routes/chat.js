@@ -47,14 +47,21 @@ chatRouter.post('/',async(req,res,next)=>{
       );
       existingConversation=owned.rows[0]||null;
       if(!existingConversation)return res.status(404).json({error:'Conversation not found.'});
+    }
 
-      if(settings.memory_enabled){
-        const history=await pool.query(
-          'SELECT role,content FROM messages WHERE conversation_id=$1 ORDER BY created_at DESC LIMIT 14',
-          [conversationId]
-        );
-        historyRows=history.rows.reverse();
-      }
+    // Parent-controlled memory follows the child across sessions, not just one chat tab.
+    // Only already-stored, safety-screened conversation text is reused.
+    if(settings.memory_enabled){
+      const history=await pool.query(
+        `SELECT m.role,m.content
+         FROM messages m
+         JOIN conversations c ON c.id=m.conversation_id
+         WHERE c.user_id=$1 AND c.child_id=$2
+         ORDER BY m.created_at DESC
+         LIMIT 20`,
+        [req.user.id,child.id]
+      );
+      historyRows=history.rows.reverse();
     }
 
     const aiMessages=[
