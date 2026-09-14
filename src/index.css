@@ -438,3 +438,14 @@
   .creation-gallery{width:94vw;max-height:72dvh}
   .creation-gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:62dvh;overflow:auto;padding:2px}
 }
+
+
+/* ===== Meet the Buddies ===== */
+.buddy-showcase-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.buddy-showcase-grid article{min-height:360px;display:grid;justify-items:center;align-content:center;text-align:center;padding:26px;border-radius:30px;background:linear-gradient(180deg,#ffffff,#fff9fd);border:1px solid #76699b18;box-shadow:0 18px 50px #6d5a8d12}
+.buddy-showcase-grid article .kiddo-robot{width:min(80%,220px)!important}
+.buddy-showcase-grid h2{margin:12px 0 6px;font-size:1.7rem;color:#4b4268}
+.buddy-showcase-grid p{margin:0;max-width:260px}
+.emotion-showcase-page{border-radius:38px;background:linear-gradient(135deg,#fff1afaa,#ffd8eaaa 50%,#c9efffaa);border:1px solid #796a9b1b}
+@media(max-width:900px){.buddy-showcase-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.buddy-showcase-grid{grid-template-columns:1fr}.buddy-showcase-grid article{min-height:300px}}
