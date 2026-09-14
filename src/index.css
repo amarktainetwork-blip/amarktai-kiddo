@@ -398,3 +398,30 @@
   .buddy-status .heard{font-size:.88rem}.buddy-history{display:none}
   .start-voice{font-size:1rem;padding:15px 22px}.end-voice{padding:12px 18px}
 }
+
+
+/* ===== Approved square-head Kiddo robot ===== */
+.kiddo-robot{position:relative;aspect-ratio:256/300;display:grid;place-items:center;isolation:isolate;transition:transform .3s ease}
+.kiddo-robot svg{width:100%;height:100%;overflow:visible;z-index:3;filter:drop-shadow(0 22px 28px #40568f22);animation:robotFloat 3.8s ease-in-out infinite}
+.robot-halo{position:absolute;inset:14% 8% 8%;z-index:1}
+.robot-halo i{position:absolute;inset:7%;border-radius:36%;border:2px solid color-mix(in srgb,var(--robot-shell) 25%,transparent);animation:robotHalo 3s ease-in-out infinite}
+.robot-halo i:nth-child(2){inset:-2%;border-color:color-mix(in srgb,var(--face-glow) 20%,transparent);animation-delay:.4s}
+.robot-arm-left,.robot-arm-right{transform-box:fill-box;transform-origin:center;transition:transform .3s ease}
+.kiddo-robot.emotion-excited .robot-arm-left,.kiddo-robot.emotion-proud .robot-arm-left{transform:rotate(18deg) translate(-4px,-5px)}
+.kiddo-robot.emotion-excited .robot-arm-right,.kiddo-robot.emotion-proud .robot-arm-right{transform:rotate(-18deg) translate(4px,-5px)}
+.kiddo-robot.emotion-sad{transform:translateY(5px)}
+.kiddo-robot.emotion-playful svg{animation-duration:2.2s}
+.kiddo-robot.emotion-sleepy svg{animation-duration:5.2s}
+.robot-mouth{transform-box:fill-box;transform-origin:center}
+.kiddo-robot.is-speaking .robot-mouth{animation:robotTalk .24s ease-in-out infinite alternate}
+.kiddo-robot.is-listening .robot-halo i{animation-duration:1s;border-color:color-mix(in srgb,var(--face-glow) 65%,transparent)}
+.kiddo-robot.is-listening svg{transform:scale(1.02)}
+.robot-audio-bars{position:absolute;z-index:5;bottom:7%;display:flex;align-items:center;gap:4px;height:26px;opacity:0}
+.robot-audio-bars i{width:4px;height:7px;border-radius:5px;background:#4e5c8d}
+.robot-audio-bars i:nth-child(2),.robot-audio-bars i:nth-child(4){height:15px}
+.robot-audio-bars i:nth-child(3){height:24px}
+.kiddo-robot.is-speaking .robot-audio-bars,.kiddo-robot.is-listening .robot-audio-bars{opacity:.8}
+.kiddo-robot.is-speaking .robot-audio-bars i{animation:wavebar .32s ease-in-out infinite alternate}
+.robot-label{position:absolute;bottom:-8px;z-index:5;color:#625b7a;font-size:.74rem;text-transform:capitalize;white-space:nowrap}
+.robot-label span{display:inline-block;width:7px;height:7px;border-radius:50%;background:#5dd7ce;margin-right:6px}
+@keyframes robotFloat{50%{transform:translateY(-8px) rotate(.7deg)}}@keyframes robotHalo{50%{transform:scale(1.05);opacity:.45}}@keyframes robotTalk{to{transform:scaleY(1.22)}}
