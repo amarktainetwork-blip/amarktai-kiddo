@@ -158,6 +158,7 @@ chatRouter.post('/stream',async(req,res,next)=>{
     let fullReply='';
     let lastEmotion='idle';
     let blocked=false;
+    send({type:'ready',message:'Kiddo heard you'});
 
     const emitSentence=(text)=>{
       const candidate=String(text||'').trim();
@@ -178,9 +179,27 @@ chatRouter.post('/stream',async(req,res,next)=>{
       const generated=await generateTextStream(aiMessages,async delta=>{
         if(blocked)return;
         sentenceBuffer+=delta;
-        const pieces=sentenceBuffer.split(/(?<=[.!?])\s+/);
-        sentenceBuffer=pieces.pop()||'';
-        for(const piece of pieces)emitSentence(piece);
+
+        // Speak safe, natural clauses as soon as possible instead of waiting
+        // for a whole long sentence. This keeps the conversation flowing.
+        const chunks=[];
+        while(sentenceBuffer.length){
+          const punctuation=sentenceBuffer.search(/(?<=[.!?])\s+/);
+          const softBreak=sentenceBuffer.length>=70
+            ? sentenceBuffer.slice(0,130).search(/[,;:]\s+/)
+            : -1;
+          let cut=-1;
+          if(punctuation>=0)cut=punctuation+1;
+          else if(softBreak>=0)cut=softBreak+1;
+          else if(sentenceBuffer.length>=130){
+            const space=sentenceBuffer.lastIndexOf(' ',130);
+            cut=space>55?space:130;
+          }
+          if(cut<0)break;
+          chunks.push(sentenceBuffer.slice(0,cut).trim());
+          sentenceBuffer=sentenceBuffer.slice(cut).trimStart();
+        }
+        for(const piece of chunks)emitSentence(piece);
       });
       if(!blocked&&sentenceBuffer.trim())emitSentence(sentenceBuffer);
       if(!fullReply.trim())fullReply="I'm here with you. What would you like to talk about?";
