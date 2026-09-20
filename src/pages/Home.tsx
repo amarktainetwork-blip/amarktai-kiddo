@@ -1,7 +1,9 @@
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { BookOpen, Home as HomeIcon, LogIn, MessageCircle, Music2, Palette, RotateCcw, Settings2, ShieldCheck, Sparkles, UserPlus, Users } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import KiddoWorld, { type WorldZone } from '../components/KiddoWorld';
+import type { WorldZone } from '../components/KiddoWorld';
+
+const KiddoWorld=lazy(()=>import('../components/KiddoWorld'));
 import { api } from '../lib/api';
 import type { SessionData } from '../lib/types';
 import '../world.css';
