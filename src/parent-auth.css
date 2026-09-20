@@ -1,0 +1,27 @@
+.parent-auth-page{position:fixed;inset:0;display:grid;place-items:center;overflow:auto;padding:28px;background:#8edcff;font-family:"Nunito",system-ui,sans-serif}
+.parent-auth-world{position:absolute;inset:0;background-image:linear-gradient(90deg,rgba(17,50,95,.18),rgba(17,50,95,.06)),url('/world/kiddo-world-premium.webp');background-size:cover;background-position:center;filter:saturate(.94) brightness(.86);transform:scale(1.025)}
+.parent-auth-page:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 25%,rgba(255,255,255,.18),transparent 34%),linear-gradient(180deg,rgba(19,52,95,.08),rgba(13,33,66,.24));backdrop-filter:blur(2px)}
+.parent-auth-back{position:absolute;z-index:4;left:24px;top:22px;display:flex;align-items:center;gap:7px;text-decoration:none;background:rgba(255,255,255,.92);color:#2459a8;border-radius:999px;padding:10px 14px;font-weight:1000;box-shadow:0 10px 30px rgba(27,57,104,.18);backdrop-filter:blur(12px)}
+.parent-auth-back svg{width:17px}
+.parent-auth-card{position:relative;z-index:3;width:min(470px,calc(100vw - 32px));padding:32px;border-radius:30px;background:rgba(255,255,255,.96);box-shadow:0 32px 80px rgba(21,47,84,.3);border:1px solid rgba(255,255,255,.86);backdrop-filter:blur(20px);color:#38567f}
+.parent-auth-card-wide{width:min(560px,calc(100vw - 32px))}
+.parent-auth-badge{width:64px;height:64px;border-radius:22px;display:grid;place-items:center;background:linear-gradient(135deg,#347ff1,#7358df 62%,#f269aa);color:#fff;box-shadow:0 14px 30px rgba(65,83,191,.24);margin-bottom:16px}
+.parent-auth-badge svg{width:30px;height:30px}
+.parent-auth-kicker{font-size:.68rem;letter-spacing:.15em;text-transform:uppercase;font-weight:1000;color:#748bb0}
+.parent-auth-card h1{font-family:"Fredoka","Nunito",sans-serif;font-size:clamp(2.1rem,4vw,3rem);line-height:.95;letter-spacing:-.035em;color:#174f9e;margin:5px 0 10px}
+.parent-auth-card>p{margin:0 0 18px;line-height:1.55;font-weight:750;color:#61779a}
+.parent-auth-card form{display:grid;gap:13px}
+.parent-auth-card label{display:grid;gap:6px;font-size:.78rem;font-weight:1000;color:#4f6890}
+.parent-auth-card input,.parent-auth-card select{width:100%;border:1px solid #dbe5f4;border-radius:15px;padding:12px 13px;background:#fbfdff;color:#27476f;font:inherit;font-weight:800;outline:none}
+.parent-auth-card input:focus,.parent-auth-card select:focus{border-color:#79a7ee;box-shadow:0 0 0 4px rgba(56,117,220,.1)}
+.parent-auth-card label small{font-size:.68rem;font-weight:700;color:#8191ab}
+.parent-auth-primary{border:0;border-radius:16px;padding:13px 16px;display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#347ff1,#6657df);color:#fff;font-weight:1000;box-shadow:0 13px 27px rgba(49,83,184,.24);margin-top:3px}
+.parent-auth-primary:hover{transform:translateY(-2px);box-shadow:0 17px 32px rgba(49,83,184,.3)}.parent-auth-primary:disabled{opacity:.65}
+.parent-auth-primary svg{width:19px}
+.parent-auth-foot{text-align:center;margin-top:4px;font-size:.78rem;font-weight:800;color:#7487a5}.parent-auth-foot a{color:#255fba}
+.parent-auth-error{padding:10px 12px;border-radius:13px;background:#fff0f1;color:#a53c4a;border:1px solid #ffd4d9;font-size:.76rem;font-weight:900}
+.parent-auth-check{grid-template-columns:auto 1fr!important;align-items:start!important;gap:9px!important;padding:11px 12px;border-radius:15px;background:#f5f9ff;border:1px solid #e1e9f5}
+.parent-auth-check input{width:18px;height:18px;margin-top:2px;accent-color:#356fd4}
+.parent-auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.parent-auth-note{padding:10px 12px;border-radius:14px;background:#f5f1ff;color:#665397;border:1px solid #e5dcff;font-size:.72rem;font-weight:800;line-height:1.45}
+@media(max-width:620px){.parent-auth-page{padding:18px}.parent-auth-back{left:12px;top:12px;padding:8px 11px;font-size:.72rem}.parent-auth-card{padding:25px 20px;margin-top:42px;border-radius:24px}.parent-auth-grid{grid-template-columns:1fr}}

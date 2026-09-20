@@ -1,12 +1,9 @@
 import { FormEvent,useState } from 'react';
+import { ArrowLeft, ShieldCheck, Sparkles } from 'lucide-react';
 import { Link,useNavigate } from 'react-router-dom';
-import { ShieldCheck,Sparkles } from 'lucide-react';
 import { api } from '../lib/api';
 import { LOCAL_VOICES, voiceForGender } from '../lib/localVoice';
-import CompanionAvatar, { BUDDY_LABELS } from '../components/CompanionAvatar';
-import MarketingShell from '../components/MarketingShell';
-
-const avatars=['nova','sprout','comet','bubbles','pixel','lumi'];
+import '../parent-auth.css';
 
 export default function Register(){
   const n=useNavigate();
@@ -26,40 +23,41 @@ export default function Register(){
   };
   const createChild=async(e:FormEvent)=>{
     e.preventDefault();setBusy(true);setError('');
-    try{await api.createChild(child);n('/dashboard')}
+    try{await api.createChild(child);n('/')}
     catch(err:any){setError(err.message)}
     finally{setBusy(false)}
   };
 
-  return <MarketingShell><div className="auth-page">
-    <div className="auth-visual">
-      <CompanionAvatar emotion={step===1?'curious':'excited'} name="Kiddo" variant={step===2?child.avatarChoice:'nova'}/>
-      <span className="eyebrow"><Sparkles/>Meet a buddy built for children</span>
-      <h2>{step===1?'Parents start the adventure.':'Choose their buddy.'}</h2>
-      <p>{step===1?'One secure parent account manages profiles, limits, safety alerts and creative permissions.':'Each child gets a distinct companion style, language and memory space.'}</p>
-      <div className="trust-row"><span><ShieldCheck/>Parent consent</span><span>English · Afrikaans · Zulu</span><span>Voice, stories, pictures & music</span></div>
-    </div>
-
-    {step===1?<form className="auth-card" onSubmit={createParent}>
-      <span className="eyebrow">Step 1 of 2</span><h1>Create parent account</h1>
-      {error&&<div className="notice error">{error}</div>}
-      <label>Your name<input className="input" value={parent.name} onChange={e=>setParent({...parent,name:e.target.value})} required/></label>
-      <label>Email<input className="input" type="email" value={parent.email} onChange={e=>setParent({...parent,email:e.target.value})} required/></label>
-      <label>Password<input className="input" type="password" minLength={10} value={parent.password} onChange={e=>setParent({...parent,password:e.target.value})} required/><small>Use at least 10 characters.</small></label>
-      <label className="check"><input type="checkbox" checked={parent.consent} onChange={e=>setParent({...parent,consent:e.target.checked})}/><span>I am the parent/legal guardian and consent to creating and managing child profiles in Kiddo.</span></label>
-      <button className="btn primary big" disabled={busy}>{busy?'Creating…':'Continue to buddy setup'}</button>
-      <p className="muted">Already registered? <Link to="/login">Sign in</Link></p>
-    </form>:<form className="auth-card" onSubmit={createChild}>
-      <span className="eyebrow">Step 2 of 2</span><h1>Meet their first Kiddo</h1>
-      {error&&<div className="notice error">{error}</div>}
-      <label>First name or nickname<input className="input" value={child.name} onChange={e=>setChild({...child,name:e.target.value})} required/></label>
-      <label>Age<input className="input" type="number" min={3} max={12} value={child.age} onChange={e=>setChild({...child,age:Number(e.target.value)})} required/></label>
-      <label>Buddy style<div className="avatar-picker avatar-cards">{avatars.map(a=><button type="button" key={a} className={child.avatarChoice===a?'avatar-choice avatar-card active':'avatar-choice avatar-card'} onClick={()=>setChild({...child,avatarChoice:a})}><CompanionAvatar size="sm" emotion={child.avatarChoice===a?'happy':'idle'} variant={a}/><span>{BUDDY_LABELS[a]||a}</span></button>)}</div></label>
-      <label>Language<select className="input" value={child.language} onChange={e=>setChild({...child,language:e.target.value})}><option>English</option><option>Afrikaans</option><option>Zulu</option></select></label>
-      <label>Voice type<select className="input" value={child.voiceGender} onChange={e=>{const voiceGender=e.target.value as 'female'|'male';setChild({...child,voiceGender,voiceId:voiceForGender(voiceGender)})}}><option value="female">Female</option><option value="male">Male</option></select></label>
-      <label>Voice<select className="input" value={child.voiceId} onChange={e=>setChild({...child,voiceId:e.target.value})}>{LOCAL_VOICES.filter(v=>v.gender===child.voiceGender).map(v=><option key={v.id} value={v.id}>{v.label} · {v.accent}</option>)}</select></label>
-      <small className="muted">English can use the on-device neural voice at no speech-credit cost. Afrikaans and Zulu use the configured provider voice until a commercially compatible local voice is installed.</small>
-      <button className="btn primary big" disabled={busy}>{busy?'Saving…':'Meet Kiddo'}</button>
-    </form>}
-  </div></MarketingShell>;
+  return <main className="parent-auth-page">
+    <div className="parent-auth-world"/>
+    <Link className="parent-auth-back" to="/"><ArrowLeft/>Kiddo World</Link>
+    <section className="parent-auth-card parent-auth-card-wide">
+      <div className="parent-auth-badge">{step===1?<ShieldCheck/>:<Sparkles/>}</div>
+      <span className="parent-auth-kicker">Step {step} of 2</span>
+      <h1>{step===1?'Create parent account':'Set up their Kiddo profile'}</h1>
+      <p>{step===1?'One secure parent account manages the family.':'Choose the basics now. The new animated companion selector arrives in Phase 2.'}</p>
+      {step===1?<form onSubmit={createParent}>
+        {error&&<div className="parent-auth-error">{error}</div>}
+        <label>Your name<input value={parent.name} onChange={e=>setParent({...parent,name:e.target.value})} required/></label>
+        <label>Email<input type="email" value={parent.email} onChange={e=>setParent({...parent,email:e.target.value})} required/></label>
+        <label>Password<input type="password" minLength={10} value={parent.password} onChange={e=>setParent({...parent,password:e.target.value})} required/><small>At least 10 characters.</small></label>
+        <label className="parent-auth-check"><input type="checkbox" checked={parent.consent} onChange={e=>setParent({...parent,consent:e.target.checked})}/><span>I am the parent/legal guardian and consent to creating and managing child profiles.</span></label>
+        <button className="parent-auth-primary" disabled={busy}>{busy?'Creating…':'Continue'}</button>
+        <div className="parent-auth-foot">Already registered? <Link to="/login">Sign in</Link></div>
+      </form>:<form onSubmit={createChild}>
+        {error&&<div className="parent-auth-error">{error}</div>}
+        <label>First name or nickname<input value={child.name} onChange={e=>setChild({...child,name:e.target.value})} required/></label>
+        <div className="parent-auth-grid">
+          <label>Age<input type="number" min={3} max={13} value={child.age} onChange={e=>setChild({...child,age:Number(e.target.value)})} required/></label>
+          <label>Language<select value={child.language} onChange={e=>setChild({...child,language:e.target.value})}><option>English</option><option>Afrikaans</option><option>Zulu</option></select></label>
+        </div>
+        <div className="parent-auth-grid">
+          <label>Voice type<select value={child.voiceGender} onChange={e=>{const voiceGender=e.target.value as 'female'|'male';setChild({...child,voiceGender,voiceId:voiceForGender(voiceGender)})}}><option value="female">Female</option><option value="male">Male</option></select></label>
+          <label>Voice<select value={child.voiceId} onChange={e=>setChild({...child,voiceId:e.target.value})}>{LOCAL_VOICES.filter(v=>v.gender===child.voiceGender).map(v=><option key={v.id} value={v.id}>{v.label} · {v.accent}</option>)}</select></label>
+        </div>
+        <div className="parent-auth-note">Companion choice is intentionally hidden until the new premium Kiddo mascot is ready in Phase 2.</div>
+        <button className="parent-auth-primary" disabled={busy}>{busy?'Saving…':'Enter Kiddo World'}</button>
+      </form>}
+    </section>
+  </main>;
 }
