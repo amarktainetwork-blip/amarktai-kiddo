@@ -1,88 +1,81 @@
 import { Link } from 'react-router-dom';
-import { BookOpen, Heart, Image, Mic2, Music2, ShieldCheck, Sparkles, Users } from 'lucide-react';
-import CompanionAvatar, { BUDDY_LABELS } from '../components/CompanionAvatar';
+import { BookOpen, Heart, Image, Mic2, Music2, ShieldCheck, Sparkles, Star } from 'lucide-react';
+import CompanionAvatar, { BUDDY_LABELS, BUDDY_TAGLINES } from '../components/CompanionAvatar';
 import MarketingShell from '../components/MarketingShell';
-import type { Emotion } from '../lib/types';
 
-const emotions:Emotion[]=['idle','happy','excited','curious','thinking','proud','calm','sad','worried','surprised','playful','sleepy'];
-const buddyIds=['nova','sprout','comet','bubbles','pixel','lumi'];
+const buddies=[
+  {id:'nova',tone:'Purple',age:'All-rounder'},
+  {id:'sprout',tone:'Green',age:'Calm & curious'},
+  {id:'comet',tone:'Coral',age:'Bold & adventurous'},
+  {id:'bubbles',tone:'Sky',age:'Music & silliness'},
+  {id:'pixel',tone:'Sunshine',age:'Games & ideas'},
+  {id:'lumi',tone:'Indigo',age:'Stories & chill'}
+];
+
+const playActions=[
+  {icon:Mic2,label:'Talk to Kiddo',copy:'Ask me anything',tone:'talk'},
+  {icon:BookOpen,label:'Make a story',copy:'You choose the adventure',tone:'story'},
+  {icon:Image,label:'Create a picture',copy:'Turn ideas into art',tone:'picture'},
+  {icon:Music2,label:'Make some music',copy:'Create your own sound',tone:'music'}
+];
 
 export default function Home(){
-  return <MarketingShell>
-    <section className="marketing-hero">
-      <div className="hero-copy">
-        <span className="eyebrow"><Sparkles size={16}/>A brighter tomorrow together</span>
-        <h1>A buddy they can talk to, create with, and <em>grow with.</em></h1>
-        <p>Amarktai Kiddo is a friendly AI companion for curious minds — built around natural conversation, imagination, creativity and parent-managed safety.</p>
-        <div className="hero-actions">
-          <Link className="btn primary big" to="/register">Start the adventure</Link>
-          <Link className="btn ghost big" to="/how-it-works">How Kiddo works</Link>
+  return <MarketingShell immersive>
+    <section className="play-home">
+      <div className="play-home-doodles" aria-hidden="true">
+        <span>★</span><span>✦</span><span>●</span><span>♥</span><span>✿</span>
+      </div>
+
+      <div className="play-home-copy">
+        <span className="play-kicker"><Sparkles size={18}/> Your AI buddy is ready</span>
+        <h1>Hi! I’m <em>Kiddo.</em><br/>What should we make today?</h1>
+        <p>Talk, dream, draw, make music and build stories together. Kiddo changes with you as you grow.</p>
+        <div className="play-home-actions">
+          <Link className="play-main-cta" to="/register"><Mic2/> Start talking</Link>
+          <Link className="play-parent-link" to="/login"><ShieldCheck/> Parent sign in</Link>
         </div>
-        <div className="trust-ribbon">
-          <span><Heart/>Always kind</span>
-          <span><Sparkles/>Built for curious minds</span>
-          <span><ShieldCheck/>Parent managed</span>
-          <span><Users/>Growing together</span>
+        <div className="play-language-row">
+          <span>English</span><span>Afrikaans</span><span>isiZulu</span>
         </div>
       </div>
-      <div className="hero-mascot">
-        <CompanionAvatar emotion="happy" name="Kiddo" variant="nova" speaking showLabel={false}/>
-        <div className="scribble-note note-one">Big questions.<br/>Brighter tomorrows. ♥</div>
-        <div className="scribble-note note-two">Hi! I’m Kiddo!</div>
+
+      <div className="play-home-stage">
+        <div className="speech-pop pop-one">Want to make a song? 🎵</div>
+        <div className="speech-pop pop-two">Or a dragon story? 🐉</div>
+        <CompanionAvatar emotion="excited" name="Kiddo" variant="nova" speaking={false} showLabel={false}/>
+        <div className="stage-shadow"/>
+      </div>
+
+      <div className="play-action-grid">
+        {playActions.map(({icon:Icon,label,copy,tone})=>
+          <Link key={label} to="/register" className={'play-action '+tone}>
+            <span className="play-action-icon"><Icon/></span>
+            <span><b>{label}</b><small>{copy}</small></span>
+            <span className="play-arrow">›</span>
+          </Link>
+        )}
+      </div>
+
+      <div className="play-trust-strip">
+        <span><Heart/> Kind by design</span>
+        <span><ShieldCheck/> Grown-ups stay in control</span>
+        <span><Star/> Your creations stay yours</span>
       </div>
     </section>
 
-    <section className="marketing-section buddy-colors">
-      <div className="section-intro centered">
-        <span className="eyebrow">Meet Kiddo</span>
-        <h2>Same bright mind. Different bright colours.</h2>
-        <p>Pick the version that feels like theirs. Every buddy has the same friendly face, voice-first experience and full emotion set.</p>
+    <section className="buddy-drawer" aria-label="Choose a Kiddo companion">
+      <div className="buddy-drawer-copy">
+        <span className="play-kicker">Six real personalities</span>
+        <h2>Pick a buddy that feels like yours.</h2>
+        <p>Not six colours of the same robot. Six different companions, each with their own look and energy.</p>
       </div>
-      <div className="buddy-color-grid">
-        {buddyIds.map((id,i)=><article key={id}>
-          <CompanionAvatar size="md" emotion={i%2?'playful':'happy'} variant={id} showLabel={false}/>
-          <b>{BUDDY_LABELS[id]}</b>
+      <div className="buddy-drawer-grid">
+        {buddies.map((buddy,i)=><article key={buddy.id}>
+          <CompanionAvatar size="sm" emotion={i%3===0?'excited':i%3===1?'curious':'playful'} variant={buddy.id} showLabel={false}/>
+          <div><b>{BUDDY_LABELS[buddy.id]}</b><small>{BUDDY_TAGLINES[buddy.id]}</small></div>
         </article>)}
       </div>
-    </section>
-
-    <section className="marketing-section create-zone">
-      <div className="section-intro centered">
-        <span className="eyebrow">Create · Explore · Grow</span>
-        <h2>Big ideas start with a conversation.</h2>
-        <p>No complicated tools for kids. They simply talk to Kiddo and ask for what they want.</p>
-      </div>
-      <div className="create-cards">
-        <article className="story-card-home"><BookOpen/><CompanionAvatar size="sm" emotion="curious" variant="nova" showLabel={false}/><h3>Stories</h3><p>Magical adventures, bedtime tales and characters they can revisit.</p></article>
-        <article className="picture-card-home"><Image/><CompanionAvatar size="sm" emotion="excited" variant="sprout" showLabel={false}/><h3>Pictures</h3><p>Colourful ideas brought to life and saved in the family library.</p></article>
-        <article className="music-card-home"><Music2/><CompanionAvatar size="sm" emotion="playful" variant="comet" showLabel={false}/><h3>Music</h3><p>Original songs and musical ideas they can create and play again.</p></article>
-        <article className="safety-card-home"><ShieldCheck/><CompanionAvatar size="sm" emotion="calm" variant="bubbles" showLabel={false}/><h3>Safety</h3><p>Parent controls stay in charge while the child experience stays fun.</p></article>
-      </div>
-    </section>
-
-    <section className="marketing-section emotion-section">
-      <div className="section-intro centered">
-        <span className="eyebrow">A face that feels alive</span>
-        <h2>Kiddo’s expression changes with the moment.</h2>
-        <p>The screen-face makes listening, excitement, curiosity, calm and concern easy for a child to understand.</p>
-      </div>
-      <div className="emotion-grid">{emotions.map((emotion,i)=><div key={emotion}><CompanionAvatar size="sm" emotion={emotion} variant={buddyIds[i%buddyIds.length]} name={emotion} showLabel={false}/><b>{emotion}</b></div>)}</div>
-    </section>
-
-    <section className="marketing-section parent-banner">
-      <div className="parent-banner-copy">
-        <span className="eyebrow">For parents</span>
-        <h2>Fun first for kids. Control where adults need it.</h2>
-        <p>Parents manage child profiles, daily limits, memory, creative permissions, voice choices, credits, safety alerts and family data.</p>
-        <Link className="btn primary" to="/for-parents">Explore Parent Controls</Link>
-      </div>
-      <CompanionAvatar size="md" emotion="proud" variant="pixel" showLabel={false}/>
-    </section>
-
-    <section className="marketing-cta">
-      <CompanionAvatar size="md" emotion="happy" variant="lumi" showLabel={false}/>
-      <div><span className="eyebrow">Curious minds. Kinder days.</span><h2>Ready to meet Kiddo?</h2><p>A parent creates the family account, then the adventure begins.</p></div>
-      <Link className="btn primary big" to="/register">Meet Kiddo</Link>
+      <Link className="buddy-parent-cta" to="/register">A grown-up can set up my Kiddo <span>→</span></Link>
     </section>
   </MarketingShell>;
 }

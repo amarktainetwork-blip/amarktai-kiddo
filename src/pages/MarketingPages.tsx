@@ -71,16 +71,16 @@ export function SafetyInfo(){
 
 export function MeetBuddies(){
   const buddies=[
-    {id:'nova',copy:'Bright, friendly and ready for every big question.'},
-    {id:'sprout',copy:'Fresh aqua energy for calm chats and curious ideas.'},
-    {id:'comet',copy:'Warm coral energy for playful, expressive moments.'},
-    {id:'bubbles',copy:'Soft lavender with a creative, imaginative feel.'},
-    {id:'pixel',copy:'Sunny yellow for bold ideas and cheerful adventures.'},
-    {id:'lumi',copy:'Deep midnight blue with a bright digital glow.'}
+    {id:'nova',copy:'A star-eared explorer for big questions, brave ideas and everyday adventures.'},
+    {id:'sprout',copy:'A leafy little nature buddy for calm chats, curiosity and gentle discovery.'},
+    {id:'comet',copy:'A tiny dragon-like adventurer for bold ideas, jokes and high-energy creativity.'},
+    {id:'bubbles',copy:'A bubbly water pal made for music, silly moments and imaginative play.'},
+    {id:'pixel',copy:'A playful game-inspired buddy for puzzles, ideas and inventive challenges.'},
+    {id:'lumi',copy:'A calm moonlit companion for stories, winding down and thoughtful chats.'}
   ];
   const emotions=['idle','happy','excited','curious','thinking','proud','calm','sad','worried','surprised','playful','sleepy'] as const;
   return <MarketingShell>
-    <PageHero eyebrow="Meet the buddies" title="Same Kiddo magic. Six bright personalities." copy="Each buddy uses the same safe voice-first brain, but children can choose a colour personality that feels like their own." emotion="happy" variant="nova"/>
+    <PageHero eyebrow="Meet the buddies" title="Six companions. Six different personalities." copy="Each buddy uses the same safe voice-first brain, but now every companion has its own shape, character and energy — not just a different colour." emotion="happy" variant="nova"/>
     <section className="marketing-section buddy-showcase-grid">
       {buddies.map((b,i)=><article key={b.id}>
         <CompanionAvatar emotion={i%2?'curious':'happy'} variant={b.id} name={BUDDY_LABELS[b.id]||'Kiddo'} showLabel={false}/>
@@ -88,7 +88,7 @@ export function MeetBuddies(){
       </article>)}
     </section>
     <section className="marketing-section emotion-showcase-page">
-      <div className="section-intro"><span className="eyebrow">Face-screen emotions</span><h2>Kiddo’s face changes with the moment.</h2><p>The mascot stays simple and friendly while the screen-face, glow and motion show how Kiddo is feeling.</p></div>
+      <div className="section-intro"><span className="eyebrow">Expressions that feel alive</span><h2>Kiddo reacts with the conversation.</h2><p>Eyes, cheeks, body movement and little character details help children read Kiddo’s mood without a dark robot screen.</p></div>
       <div className="emotion-grid">{emotions.map((emotion,i)=><div key={emotion}><CompanionAvatar size="sm" emotion={emotion} variant={['nova','sprout','comet','bubbles','pixel','lumi'][i%6]} name={emotion} showLabel={false}/><b>{emotion}</b></div>)}</div>
     </section>
   </MarketingShell>;
