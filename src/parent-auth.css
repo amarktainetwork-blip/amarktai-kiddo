@@ -1,5 +1,5 @@
 .parent-auth-page{position:fixed;inset:0;display:grid;place-items:center;overflow:auto;padding:28px;background:#8edcff;font-family:"Nunito",system-ui,sans-serif}
-.parent-auth-world{position:absolute;inset:0;background-image:linear-gradient(90deg,rgba(17,50,95,.18),rgba(17,50,95,.06)),url('/world/kiddo-world-premium.webp');background-size:cover;background-position:center;filter:saturate(.94) brightness(.86);transform:scale(1.025)}
+.parent-auth-world{position:absolute;inset:0;background:radial-gradient(circle at 14% 20%,rgba(255,214,87,.5),transparent 26%),radial-gradient(circle at 83% 24%,rgba(255,111,202,.34),transparent 28%),radial-gradient(circle at 72% 78%,rgba(107,222,176,.34),transparent 28%),linear-gradient(155deg,#86d7ff 0%,#bfeaff 42%,#e7ddff 72%,#fff0c1 100%);transform:scale(1.025)}
 .parent-auth-page:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 25%,rgba(255,255,255,.18),transparent 34%),linear-gradient(180deg,rgba(19,52,95,.08),rgba(13,33,66,.24));backdrop-filter:blur(2px)}
 .parent-auth-back{position:absolute;z-index:4;left:24px;top:22px;display:flex;align-items:center;gap:7px;text-decoration:none;background:rgba(255,255,255,.92);color:#2459a8;border-radius:999px;padding:10px 14px;font-weight:1000;box-shadow:0 10px 30px rgba(27,57,104,.18);backdrop-filter:blur(12px)}
 .parent-auth-back svg{width:17px}
