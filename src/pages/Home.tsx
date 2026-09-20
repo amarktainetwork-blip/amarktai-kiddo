@@ -1,119 +1,119 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { BookOpen, Home as HomeIcon, LogIn, MessageCircle, Music2, Palette, RotateCcw, Settings2, ShieldCheck, Sparkles, UserPlus, Users } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
-import type { WorldZone } from '../components/KiddoWorld';
-
-const KiddoWorld=lazy(()=>import('../components/KiddoWorld'));
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties, PointerEvent } from 'react';
+import { ArrowLeft, BookOpen, Brush, LogIn, LogOut, MessageCircle, Music2, ShieldCheck, Sparkles, UserPlus, Users, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import type { SessionData } from '../lib/types';
 import '../world.css';
 
-const zoneCopy:Record<WorldZone,{title:string;eyebrow:string;copy:string;action:string;emoji:string}>={
-  home:{title:'Kiddo World',eyebrow:'Your adventure starts here',copy:'Pick a place, explore the islands and create something amazing with Kiddo.',action:'Choose a place',emoji:'✨'},
-  story:{title:'Story Treehouse',eyebrow:'Stories live up in the trees',copy:'Build adventures, bedtime stories and recurring characters you can come back to.',action:'Make a story',emoji:'📚'},
-  talk:{title:'Talk Portal',eyebrow:'Ask anything',copy:'Chat naturally with Kiddo, ask questions, share ideas and keep exploring while Kiddo creates.',action:'Talk to Kiddo',emoji:'💬'},
-  music:{title:'Music Studio',eyebrow:'Make some noise',copy:'Create original songs, beats and musical ideas that match the child and their age.',action:'Make music',emoji:'🎵'},
-  art:{title:'Art Studio',eyebrow:'Turn ideas into pictures',copy:'Create colourful art from the conversation and keep every finished piece in the family library.',action:'Create art',emoji:'🎨'}
+type Zone='story'|'talk'|'music'|'art';
+
+const zones:Record<Zone,{title:string;copy:string;icon:any;className:string}>={
+  story:{title:'Story Treehouse',copy:'A magical place for adventures, bedtime stories and favourite characters.',icon:BookOpen,className:'story'},
+  talk:{title:'Talk Cave',copy:'A cosy place to ask questions, tell Kiddo about your day and explore big ideas.',icon:MessageCircle,className:'talk'},
+  music:{title:'Music Studio',copy:'A colourful studio for songs, beats and musical adventures made for you.',icon:Music2,className:'music'},
+  art:{title:'Art Studio',copy:'A bright creative space where ideas turn into pictures and imaginative worlds.',icon:Brush,className:'art'}
 };
 
-const zones:Array<{id:WorldZone;label:string;icon:any;className:string}>=[
-  {id:'story',label:'Story',icon:BookOpen,className:'story'},
-  {id:'talk',label:'Talk',icon:MessageCircle,className:'talk'},
-  {id:'music',label:'Music',icon:Music2,className:'music'},
-  {id:'art',label:'Art',icon:Palette,className:'art'}
-];
-
 export default function Home(){
-  const navigate=useNavigate();
-  const[active,setActive]=useState<WorldZone>('home');
-  const[parentOpen,setParentOpen]=useState(false);
   const[session,setSession]=useState<SessionData|null>(null);
-  const[quality,setQuality]=useState<'low'|'high'>('high');
+  const[parentOpen,setParentOpen]=useState(false);
+  const[active,setActive]=useState<Zone|null>(null);
+  const stageRef=useRef<HTMLDivElement>(null);
+  const[tilt,setTilt]=useState({x:0,y:0});
 
-  useEffect(()=>{
-    api.me().then(setSession).catch(()=>{});
-    const coarse=window.matchMedia('(max-width: 760px)').matches;
-    const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    setQuality(coarse||reduced?'low':'high');
-  },[]);
+  useEffect(()=>{api.me().then(setSession).catch(()=>{});},[]);
 
-  const detail=zoneCopy[active];
-  const childId=session?.children?.[0]?.id;
-  const startZone=()=>{
-    if(active==='home')return;
-    if(childId)navigate('/chat?child='+childId+'&world='+active);
-    else if(session)navigate('/dashboard');
-    else navigate('/register');
+  const greeting=useMemo(()=>{
+    if(session?.children?.length)return `Welcome back, ${session.children[0].name}`;
+    return 'Explore Kiddo World';
+  },[session]);
+
+  const move=(e:PointerEvent<HTMLDivElement>)=>{
+    if(!stageRef.current||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    const r=stageRef.current.getBoundingClientRect();
+    setTilt({x:(e.clientX-r.left)/r.width-.5,y:(e.clientY-r.top)/r.height-.5});
   };
 
-  const worldStatus=useMemo(()=>session?.children?.length
-    ? 'Welcome back, '+session.children[0].name
-    : 'No login needed to explore',[session]);
+  const reset=()=>setTilt({x:0,y:0});
+  const logout=async()=>{
+    await api.logout().catch(()=>{});
+    setSession(null);
+    setParentOpen(false);
+  };
 
-  return <div className="kiddo-world-page">
-    <div className="world-canvas-wrap">
-      <Suspense fallback={<div className="world-loading"><Sparkles/><b>Opening Kiddo World…</b></div>}>
-        <KiddoWorld active={active} onSelect={setActive} quality={quality}/>
-      </Suspense>
-    </div>
+  return <main className="premium-world">
+    <div
+      ref={stageRef}
+      className={active?`premium-stage focus-${active}`:'premium-stage'}
+      onPointerMove={move}
+      onPointerLeave={reset}
+      style={{'--px':tilt.x,'--py':tilt.y} as CSSProperties}
+    >
+      <img className="premium-world-art" src="/world/kiddo-world-premium.webp" alt="Kiddo World with a story treehouse, talk cave, music studio and art studio on magical floating islands"/>
+      <div className="premium-sunwash"/>
+      <div className="premium-cloud-haze haze-one"/>
+      <div className="premium-cloud-haze haze-two"/>
+      <div className="premium-sparkles" aria-hidden="true">{Array.from({length:18},(_,i)=><i key={i}/>)}</div>
 
-    <header className="world-topbar">
-      <button className="world-brand" onClick={()=>setActive('home')} aria-label="Kiddo World home">
-        <span className="world-brand-mark"><Sparkles/></span>
-        <span><small>Amarktai</small><b>Kiddo</b></span>
+      <button className="world-parent-button" onClick={()=>setParentOpen(true)}>
+        <Users/><span>For parents</span>
       </button>
-      <div className="world-title">
-        <span>{detail.eyebrow}</span>
-        <strong>{detail.title}</strong>
-      </div>
-      <button className="parents-entry" onClick={()=>setParentOpen(true)}><Users/>For parents</button>
-    </header>
 
-    <div className="world-welcome">
-      <span className="world-status">{worldStatus}</span>
-      <h1>{active==='home'?'What should we make today?':detail.title}</h1>
-      <p>{detail.copy}</p>
-      {active!=='home'&&<button className={'zone-primary '+active} onClick={startZone}>{detail.emoji} {detail.action}</button>}
+      {(Object.keys(zones) as Zone[]).map(id=>{
+        const z=zones[id]; const Icon=z.icon;
+        return <button
+          key={id}
+          className={`world-hotspot hotspot-${id}`}
+          onClick={()=>setActive(id)}
+          aria-label={`Explore ${z.title}`}
+        >
+          <span className="hotspot-ring"/>
+          <span className="hotspot-label"><Icon/><b>{z.title}</b></span>
+        </button>;
+      })}
+
+      <div className="world-greeting"><Sparkles/><span>{greeting}</span></div>
+
+      {active&&<section className={`zone-focus-card ${zones[active].className}`}>
+        <button className="zone-back" onClick={()=>setActive(null)}><ArrowLeft/>Back to world</button>
+        <div className="zone-focus-icon">{(() => {const Icon=zones[active].icon; return <Icon/>;})()}</div>
+        <span className="zone-eyebrow">Explore Kiddo World</span>
+        <h2>{zones[active].title}</h2>
+        <p>{zones[active].copy}</p>
+        <small>We’re perfecting the world first. Kiddo’s animated companion and the new child experience are the next phases.</small>
+      </section>}
+
+      {parentOpen&&<div className="parent-world-backdrop" onClick={()=>setParentOpen(false)}>
+        <aside className="parent-world-panel" onClick={e=>e.stopPropagation()}>
+          <button className="parent-close" onClick={()=>setParentOpen(false)} aria-label="Close"><X/></button>
+          <div className="parent-panel-icon"><ShieldCheck/></div>
+          <span className="parent-eyebrow">Grown-ups only</span>
+          <h2>Parent space</h2>
+          <p>Parents manage the family account, safety settings and child profiles. Children stay inside Kiddo World.</p>
+          <div className="parent-panel-actions">
+            {session
+              ? <>
+                  <div className="parent-signed-in"><ShieldCheck/><span><small>Signed in as</small><b>{session.user.email}</b></span></div>
+                  <button type="button" onClick={logout}><LogOut/>Sign out</button>
+                </>
+              : <>
+                  <Link to="/login"><LogIn/>Parent sign in</Link>
+                  <Link to="/register"><UserPlus/>Create family account</Link>
+                </>}
+          </div>
+          <div className="parent-panel-foot">
+            <b>English · Afrikaans · isiZulu</b>
+            <span>Parent controls and the new family dashboard arrive in Phase 3.</span>
+          </div>
+        </aside>
+      </div>}
     </div>
 
-    <nav className="world-zone-dock" aria-label="Kiddo World places">
-      {zones.map(({id,label,icon:Icon,className})=>
-        <button key={id} className={'zone-chip '+className+(active===id?' active':'')} onClick={()=>setActive(id)}>
-          <span><Icon/></span><b>{label}</b>
-        </button>
-      )}
-      <button className={'zone-chip home'+(active==='home'?' active':'')} onClick={()=>setActive('home')}>
-        <span><HomeIcon/></span><b>Home</b>
-      </button>
-    </nav>
-
-    <div className="world-hint"><RotateCcw/>Drag your view with the places below · tap a building to visit</div>
-
-    {parentOpen&&<div className="parent-menu-backdrop" onClick={()=>setParentOpen(false)}>
-      <aside className="parent-world-menu" onClick={e=>e.stopPropagation()}>
-        <button className="parent-menu-close" onClick={()=>setParentOpen(false)} aria-label="Close parent menu">×</button>
-        <div className="parent-menu-head"><ShieldCheck/><div><span>Grown-ups only</span><h2>Parent space</h2></div></div>
-        <p>Kiddo World stays simple for children. Family settings, safety and account controls live here.</p>
-        <div className="parent-menu-actions">
-          {session
-            ? <Link to="/parent"><Settings2/>Parent controls</Link>
-            : <Link to="/login"><LogIn/>Parent sign in</Link>}
-          {!session&&<Link to="/register"><UserPlus/>Create family account</Link>}
-          {session&&<Link to="/dashboard"><HomeIcon/>Family dashboard</Link>}
-          <Link to="/for-parents"><Users/>How Kiddo works for parents</Link>
-          <Link to="/safety"><ShieldCheck/>Safety & privacy</Link>
-        </div>
-        <div className="parent-menu-foot">
-          <span>English · Afrikaans · isiZulu</span>
-          <small>Parent-managed by design</small>
-        </div>
-      </aside>
-    </div>}
-
-    <div className="rotate-phone">
-      <div className="rotate-device"><span>★</span></div>
-      <h2>Turn your phone sideways</h2>
-      <p>Kiddo World is made for adventures in landscape.</p>
+    <div className="rotate-world">
+      <div className="rotate-phone-icon"><span>★</span></div>
+      <h1>Turn your phone sideways</h1>
+      <p>Kiddo World is an adventure made for landscape.</p>
     </div>
-  </div>;
+  </main>;
 }
